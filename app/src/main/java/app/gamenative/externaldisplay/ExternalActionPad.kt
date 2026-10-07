@@ -35,6 +35,7 @@ class ExternalActionPad(
     private val keyboardView: ExternalOnScreenKeyboardView
     private val padView: ExternalActionBarView
     private val heldModifiers = mutableSetOf<XKeycode>()
+    private val lockedModifiers = mutableSetOf<XKeycode>()
     private val modifierStyles = mutableMapOf<XKeycode, (Boolean) -> Unit>()
     private val trackpadView: TouchpadView
 
@@ -90,8 +91,10 @@ class ExternalActionPad(
     }
 
     /**
-     * One-shot modifier: tap to arm it (lit up), and it lets go by itself right after the next button
-     * (1-9, 0, -, =) is pressed. Tap it again to cancel.
+     * Modifier button with three states:
+     * - tap: armed (lit). It lets go by itself right after the next pad button (1-9, 0, -, =).
+     * - double tap: locked (lit with a bright outline). It stays held until you tap it again.
+     * - tap while armed or locked: off.
      */
     private fun modifierButton(label: String, key: XKeycode): TextView {
         return TextView(context).apply {
@@ -106,41 +109,60 @@ class ExternalActionPad(
                 setMargins(m, 0, m, 0)
             }
             fun style(active: Boolean) {
+                val locked = key in lockedModifiers
                 background = GradientDrawable().apply {
                     cornerRadius = 12 * density
                     setColor(if (active) theme.pressed else theme.key)
-                    setStroke((2 * density).toInt(), theme.border)
+                    setStroke(((if (locked) 4 else 2) * density).toInt(), if (locked) theme.text else theme.border)
                 }
             }
             style(false)
             modifierStyles[key] = { active -> style(active) }
+            var lastArmedAt = 0L
             setOnClickListener {
                 performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
-                if (heldModifiers.remove(key)) {
-                    xServer.injectKeyRelease(key)
-                    style(false)
-                } else {
-                    heldModifiers.add(key)
-                    xServer.injectKeyPress(key)
-                    style(true)
+                val now = android.os.SystemClock.uptimeMillis()
+                when {
+                    key !in heldModifiers -> {
+                        heldModifiers.add(key)
+                        xServer.injectKeyPress(key)
+                        lastArmedAt = now
+                        style(true)
+                    }
+                    key !in lockedModifiers && now - lastArmedAt <= DOUBLE_TAP_MS -> {
+                        lockedModifiers.add(key)
+                        style(true)
+                    }
+                    else -> {
+                        heldModifiers.remove(key)
+                        lockedModifiers.remove(key)
+                        xServer.injectKeyRelease(key)
+                        style(false)
+                    }
                 }
             }
         }
     }
 
+    /** Lets go of every armed modifier. Locked ones stay down. */
     private fun releaseModifiers() {
-        heldModifiers.toList().forEach { key ->
+        heldModifiers.toList().filter { it !in lockedModifiers }.forEach { key ->
+            heldModifiers.remove(key)
             xServer.injectKeyRelease(key)
             modifierStyles[key]?.invoke(false)
         }
-        heldModifiers.clear()
     }
 
     /** Never leave a modifier stuck down if the display goes away. */
     override fun onDetachedFromWindow() {
         heldModifiers.toList().forEach { xServer.injectKeyRelease(it) }
         heldModifiers.clear()
+        lockedModifiers.clear()
         super.onDetachedFromWindow()
+    }
+
+    private companion object {
+        const val DOUBLE_TAP_MS = 350L
     }
 
     private fun setTrackpad(on: Boolean) {
