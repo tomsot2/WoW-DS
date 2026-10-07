@@ -18,7 +18,7 @@ import com.winlator.xserver.XKeycode
 import com.winlator.xserver.XServer
 
 /**
- * Twelve touch buttons for the second display, laid out like WoW's main action bar (two rows of six).
+ * Twelve touch buttons for the second display, in the order of WoW's main action bar (four rows of three).
  *
  * The slots send WoW's default keys for "Action Bar 1": 1 2 3 4 5 6 7 8 9 0 - =. That means the pad
  * works with the stock key bindings and needs no addon. To use different keys, change [SLOTS].
@@ -49,6 +49,7 @@ class ExternalActionBarView(context: Context, private val xServer: XServer) : Li
             val row = LinearLayout(context).apply {
                 orientation = HORIZONTAL
                 isMotionEventSplittingEnabled = true
+                // Rows share the screen height equally, so four rows always fit.
                 layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f)
             }
             rowSlots.forEach { slot -> row.addView(createButton(slot)) }

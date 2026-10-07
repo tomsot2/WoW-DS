@@ -95,7 +95,6 @@ import app.gamenative.ui.enums.Orientation
 import java.util.EnumSet
 import app.gamenative.externaldisplay.ExternalDisplayInputController
 import app.gamenative.externaldisplay.ExternalDisplaySwapController
-import app.gamenative.externaldisplay.SplitScreenController
 import app.gamenative.externaldisplay.SwapInputOverlayView
 import app.gamenative.ui.component.LsfgQuickMenuState
 import app.gamenative.ui.component.PerformanceQuickMenuState
@@ -2417,22 +2416,8 @@ fun XServerScreen(
             } else {
                 frameLayout.addView(icView)
             }
-            // Dual-screen split (set by the WoW launcher): the second display shows the bottom band of a tall X screen.
-            val splitTopHeight = container.getExtra("splitTopHeight").toIntOrNull() ?: 0
-            val splitController =
-                (xServerView.renderer as? VulkanRenderer)?.takeIf { splitTopHeight > 0 }?.let { mainRenderer ->
-                    SplitScreenController(
-                        context = context,
-                        xServer = xServerView.getxServer(),
-                        mainRenderer = mainRenderer,
-                        topHeight = splitTopHeight,
-                        touchpadViewProvider = { PluviaApp.touchpadView },
-                    ).apply { start() }
-                }
-            val configuredExternalMode =
-                if (splitController != null) ExternalDisplayInputController.Mode.OFF
-                else ExternalDisplayInputController.fromConfig(container.externalDisplayMode)
-            val swapEnabled = splitController == null && container.isExternalDisplaySwap
+            val configuredExternalMode = ExternalDisplayInputController.fromConfig(container.externalDisplayMode)
+            val swapEnabled = container.isExternalDisplaySwap
 
             val overlay = SwapInputOverlayView(context, xServerView.getxServer()).apply {
                 visibility = View.GONE
@@ -2496,7 +2481,6 @@ fun XServerScreen(
                 override fun onViewDetachedFromWindow(v: View) {
                     externalDisplayController?.stop()
                     swapController?.stop()
-                    splitController?.stop()
                 }
             })
             // Don't call hideInputControls() here - let the auto-show logic below handle visibility

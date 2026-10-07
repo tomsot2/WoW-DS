@@ -36,7 +36,6 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.events.AndroidEvent
-import app.gamenative.externaldisplay.SplitScreenController
 import app.gamenative.ui.screen.wow.WowClientDownloader.BUILD_INFO
 import app.gamenative.ui.screen.wow.WowClientDownloader.FLAVOR_DIR
 import app.gamenative.ui.screen.wow.WowClientDownloader.TARGET_PRODUCT
@@ -83,7 +82,7 @@ fun WoWForeverScreen(
     val gpu = remember { GpuProfile.detect(context) }
 
     var flavor by remember { mutableStateOf(WowFlavor.load(context)) }
-    var dualScreen by remember { mutableStateOf(DualScreen.isEnabled(context)) }
+    var buttonPad by remember { mutableStateOf(ButtonPad.isEnabled(context)) }
     var gamePath by remember { mutableStateOf(GamePath.load(context)) }
     var files by remember { mutableStateOf(GamePath.Status()) }
     var isLaunching by remember { mutableStateOf(false) }
@@ -371,14 +370,14 @@ fun WoWForeverScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 FlavorSelector(selected = flavor, enabled = !isLaunching && !isUpdating, onSelect = { selectFlavor(it) })
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "Second screen UI (experimental)", fontSize = 12.sp, color = WowMuted)
+                    Text(text = "Action button pad (second screen)", fontSize = 12.sp, color = WowMuted)
                     Spacer(modifier = Modifier.width(8.dp))
                     Switch(
-                        checked = dualScreen,
+                        checked = buttonPad,
                         enabled = !isLaunching,
                         onCheckedChange = {
-                            dualScreen = it
-                            DualScreen.setEnabled(context, it)
+                            buttonPad = it
+                            ButtonPad.setEnabled(context, it)
                         },
                     )
                 }
@@ -884,28 +883,15 @@ private fun CheckItem(label: String, ready: Boolean) {
     }
 }
 
-/**
- * Second-screen UI: when on and a second display is present, the game window is made taller than
- * the top screen and the extra rows are shown 1:1 on the second display (see SplitScreenController).
- * An addon such as Offhand then keeps the 3D world on top and puts UI panels in the bottom band.
- */
-private object DualScreen {
+/** The 12-button action bar pad on the second display. On by default; the launcher switch turns it off. */
+private object ButtonPad {
     private const val PREFS = "wow_forever"
-    private const val KEY = "dual_screen_ui"
+    private const val KEY = "button_pad"
 
-    data class Layout(val screenSize: String, val topHeight: Int)
-
-    fun isEnabled(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY, false)
+    fun isEnabled(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY, true)
 
     fun setEnabled(context: Context, enabled: Boolean) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY, enabled).apply()
-
-    fun layout(context: Context, gpu: GpuProfile): Layout? {
-        if (!isEnabled(context)) return null
-        val (bandWidth, bandHeight) = SplitScreenController.secondDisplaySize(context) ?: return null
-        val (topWidth, topHeight) = gpu.screenSize.split("x").map { it.toInt() }
-        return Layout("${maxOf(topWidth, bandWidth)}x${topHeight + bandHeight}", topHeight)
-    }
 }
 
 private class StorageAccessDeniedException(cause: Throwable) : Exception(cause)
@@ -962,8 +948,7 @@ private fun prepareLaunch(context: Context, gameRoot: File, gpu: GpuProfile, onS
 
     onStatus("Configuring ${gpu.label} container...")
     val containerManager = ContainerManager(context)
-    val split = DualScreen.layout(context, gpu)
-    val config = containerConfig(gameRoot, gpu, arm64Exe.name, split?.screenSize ?: gpu.screenSize)
+    val config = containerConfig(gameRoot, gpu, arm64Exe.name, gpu.screenSize)
     val existing = containerManager.getContainerById(CONTAINER_ID)
     if (existing == null) {
         onStatus("Creating prefix environment (first boot)...")
@@ -972,11 +957,10 @@ private fun prepareLaunch(context: Context, gameRoot: File, gpu: GpuProfile, onS
         existing.loadData(config)
     }
     val container = checkNotNull(containerManager.getContainerById(CONTAINER_ID)) { "Container creation failed. Check system storage and logs." }
-    container.putExtra("splitTopHeight", split?.topHeight)
-    // Second display (if any) shows the 12-button action bar pad. With the experimental dual-screen
-    // split on, the second display is already used for the game, so the pad stays off.
+    // Second display (if any) shows the 12-button action bar pad when its switch is on.
     container.setExternalDisplayMode(
-        if (split == null) Container.EXTERNAL_DISPLAY_MODE_BUTTONS else Container.EXTERNAL_DISPLAY_MODE_OFF,
+        if (ButtonPad.isEnabled(context)) Container.EXTERNAL_DISPLAY_MODE_BUTTONS
+        else Container.EXTERNAL_DISPLAY_MODE_OFF,
     )
     container.saveData()
     return CONTAINER_ID
