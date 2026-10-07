@@ -16,7 +16,6 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import app.gamenative.R
-import app.gamenative.ui.screen.wow.WowFlavor
 import com.winlator.container.Container
 import com.winlator.widget.TouchpadView
 import com.winlator.xserver.XServer
@@ -210,7 +209,7 @@ private class ExternalInputPresentation(
                 setContentView(hybrid)
             }
             ExternalDisplayInputController.Mode.BUTTONS -> {
-                setContentView(ExternalActionPad(context, xServer, PadTheme.forFlavor(WowFlavor.current), touchpadViewProvider))
+                setContentView(ExternalActionPad(context, xServer, PadTheme.DEFAULT, touchpadViewProvider))
             }
             else -> {
                 setContentView(FrameLayout(context))
