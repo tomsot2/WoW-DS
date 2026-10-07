@@ -63,6 +63,7 @@ class ExternalActionPad(
             // Slower, steadier cursor for precise aiming: no speed-up on fast swipes, and a lower base speed.
             setCursorAcceleration(TRACKPAD_ACCELERATION)
             setSensitivity(TRACKPAD_SENSITIVITY)
+            setPrecisionCursor(true)
         }
         trackpadPanel = LinearLayout(context).apply {
             orientation = VERTICAL

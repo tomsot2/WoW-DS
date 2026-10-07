@@ -49,6 +49,11 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private boolean scrolling;
     private float sensitivity;
     private float cursorAcceleration = CURSOR_ACCELERATION;
+    // Precision mode: slow finger movement moves the cursor less, and fractions of a pixel are carried over
+    // instead of being rounded up, so tiny nudges stay tiny.
+    private boolean precisionCursor = false;
+    private static final float PRECISION_FULL_SPEED = 8f;  // per-event movement at which the normal speed applies
+    private static final float PRECISION_MIN_GAIN = 0.4f;  // speed factor for the very slowest movement
     private final XServer xServer;
     private final float[] xform;
     private boolean simTouchScreen = false;
@@ -309,6 +314,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private class Finger {
         private int lastX;
         private int lastY;
+        private float remainderX;
+        private float remainderY;
         private final int startX;
         private final int startY;
         private final long touchTime;
@@ -330,14 +337,31 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             this.y = (int)transformedPoint[1];
         }
 
+        private float precisionGain(float magnitude) {
+            if (magnitude >= PRECISION_FULL_SPEED) return 1f;
+            return PRECISION_MIN_GAIN + (1f - PRECISION_MIN_GAIN) * (magnitude / PRECISION_FULL_SPEED);
+        }
+
         public int deltaX() {
             float dx = (this.x - this.lastX) * TouchpadView.this.sensitivity;
+            if (TouchpadView.this.precisionCursor) {
+                dx = dx * precisionGain(Math.abs(dx)) + remainderX;
+                int whole = (int) dx; // toward zero
+                remainderX = dx - whole;
+                return whole;
+            }
             if (Math.abs(dx) > CURSOR_ACCELERATION_THRESHOLD) dx *= TouchpadView.this.cursorAcceleration;
             return Mathf.roundPoint(dx);
         }
 
         public int deltaY() {
             float dy = (this.y - this.lastY) * TouchpadView.this.sensitivity;
+            if (TouchpadView.this.precisionCursor) {
+                dy = dy * precisionGain(Math.abs(dy)) + remainderY;
+                int whole = (int) dy; // toward zero
+                remainderY = dy - whole;
+                return whole;
+            }
             if (Math.abs(dy) > CURSOR_ACCELERATION_THRESHOLD) dy *= TouchpadView.this.cursorAcceleration;
             return Mathf.roundPoint(dy);
         }
@@ -2214,6 +2238,11 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 fingerPointerButtonRight = null;
             }, 30);
         }
+    }
+
+    /** Slow movement moves the cursor less and sub-pixel movement is carried over, for fine aiming. */
+    public void setPrecisionCursor(boolean precisionCursor) {
+        this.precisionCursor = precisionCursor;
     }
 
     /** Boost applied to fast finger movement. 1.0 turns the acceleration off. */
