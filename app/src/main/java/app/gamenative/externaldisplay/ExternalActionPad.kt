@@ -281,7 +281,7 @@ class ExternalActionPad(
         const val DOUBLE_TAP_MS = 350L
 
         // Trackpad feel. Lower sensitivity = slower, more precise. Acceleration 1.0 = none.
-        const val TRACKPAD_SENSITIVITY = 0.6f
+        const val TRACKPAD_SENSITIVITY = 0.7f
         const val TRACKPAD_ACCELERATION = 1.0f
     }
 

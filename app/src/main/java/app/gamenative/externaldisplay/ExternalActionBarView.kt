@@ -18,8 +18,8 @@ import com.winlator.xserver.XServer
 /**
  * The main second-screen pad.
  *
- * Left third: a column of window shortcuts (Map, Character, Spellbook, Talents, Skills, Quest Log).
- * Right two thirds: F1-F12 in two rows, the 12 action buttons (4 rows of 3), and a slot underneath
+ * Left half: a column of window shortcuts (Map, Character, Spellbook, Talents, Skills, Quest Log).
+ * Right half: F1-F12 in two rows, the 12 action buttons (4 rows of 3), and a slot underneath
  * for the modifier buttons (see [setModifierRow]).
  *
  * Every button sends WoW's default key, so the pad works with the stock bindings and needs no addon.
@@ -48,10 +48,10 @@ class ExternalActionBarView(
         val pad = dp(8)
         setPadding(pad, pad, pad, pad)
 
-        val leftColumn = column(1f).apply {
+        val leftColumn = column(LEFT_WEIGHT).apply {
             PANELS.forEach { addView(keyRow(listOf(it), textSp = 15f, weight = 1f)) }
         }
-        rightColumn = column(2f).apply {
+        rightColumn = column(RIGHT_WEIGHT).apply {
             FUNCTION_KEYS.chunked(6).forEach { addView(keyRow(it, textSp = 13f, weight = 0.6f)) }
             ACTION_SLOTS.chunked(3).forEach { addView(keyRow(it, textSp = 26f, weight = 1f)) }
         }
@@ -146,6 +146,11 @@ class ExternalActionBarView(
     }
 
     private companion object {
+        // Width split between the window-shortcut column and the F-key/number/modifier block.
+        // A smaller RIGHT_WEIGHT squeezes that block toward the right edge, within reach of a right thumb.
+        const val LEFT_WEIGHT = 1f
+        const val RIGHT_WEIGHT = 1f
+
         // WoW's default bindings for the character, spellbook and similar windows.
         val PANELS = listOf(
             Slot("Map", XKeycode.KEY_M),
