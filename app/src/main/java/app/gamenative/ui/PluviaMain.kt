@@ -77,6 +77,7 @@ import app.gamenative.utils.ContainerUtils
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
+import com.winlator.core.AppUtils
 import com.winlator.core.StringUtils
 import com.winlator.core.TarCompressorUtils
 import com.winlator.xenvironment.ImageFSLegacyMigrator
@@ -371,6 +372,14 @@ fun PluviaMain(
 
                                 if (currentRoute == PluviaScreen.XServer.route) {
                                     navController.popBackStack()
+                                    // The guest, renderer and driver state from a finished game session
+                                    // can't be reused: the next launch hangs at "Launching game...".
+                                    // Restart the app process so every launch starts clean.
+                                    val activity = context as? Activity
+                                    if (activity != null && !activity.isFinishing && !activity.isDestroyed) {
+                                        delay(300)
+                                        AppUtils.restartApplication(activity)
+                                    }
                                 }
                             }
                         },
