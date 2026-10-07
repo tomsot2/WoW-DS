@@ -15,7 +15,8 @@ import com.winlator.xserver.XServer
 /**
  * The main second-screen pad.
  *
- * Left half: a column of window shortcuts (Map, Character, Spellbook, Talents, Skills, Quest Log).
+ * Left half: a column of window shortcuts (Map, Character, Spellbook, Talents, Skills, Quest Log,
+ * Social, System).
  * Right half, top to bottom: the modifier buttons (see [setModifierRow]), the 12 action buttons
  * (4 rows of 3), and F1-F12 in two rows.
  *
@@ -147,6 +148,9 @@ class ExternalActionBarView(
             Slot("Talents", XKeycode.KEY_N),
             Slot("Skills", XKeycode.KEY_K),
             Slot("Quest Log", XKeycode.KEY_L),
+            Slot("Social", XKeycode.KEY_O),
+            // Escape opens the game menu ("System") when nothing else is open.
+            Slot("System", XKeycode.KEY_ESC),
         )
 
         val FUNCTION_KEYS = listOf(
