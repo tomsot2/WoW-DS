@@ -16,10 +16,14 @@ import com.winlator.xserver.XKeycode
 import com.winlator.xserver.XServer
 
 /**
- * Twelve touch buttons for the second display, in the order of WoW's main action bar (four rows of three).
+ * The main second-screen pad.
  *
- * The slots send WoW's default keys for "Action Bar 1": 1 2 3 4 5 6 7 8 9 0 - =. That means the pad
- * works with the stock key bindings and needs no addon. To use different keys, change [SLOTS].
+ * Left third: a column of window shortcuts (Map, Character, Spellbook, Talents, Skills, Quest Log).
+ * Right two thirds: F1-F12 in two rows, the 12 action buttons (4 rows of 3), and a slot underneath
+ * for the modifier buttons (see [setModifierRow]).
+ *
+ * Every button sends WoW's default key, so the pad works with the stock bindings and needs no addon.
+ * To use different keys, change the lists in the companion object.
  *
  * One touch is exactly one key press and one key release. There are no macros, sequences or timed
  * repeats here: anything multi-step belongs in WoW's own macro system.
@@ -35,44 +39,61 @@ class ExternalActionBarView(
     private data class Slot(val label: String, val key: XKeycode)
 
     private val downKeys = mutableSetOf<XKeycode>()
-
-    private val keyColor = theme.text
-    private val keyBackground = theme.key
-    private val keyPressed = theme.pressed
-    private val keyBorder = theme.border
+    private val rightColumn: LinearLayout
 
     init {
-        orientation = VERTICAL
-        gravity = Gravity.CENTER
+        orientation = HORIZONTAL
         isMotionEventSplittingEnabled = true
         setBackgroundColor(theme.background)
-        val pad = dp(12)
+        val pad = dp(8)
         setPadding(pad, pad, pad, pad)
 
-        SLOTS.chunked(COLUMNS).forEach { rowSlots ->
-            val row = LinearLayout(context).apply {
-                orientation = HORIZONTAL
-                isMotionEventSplittingEnabled = true
-                // Rows share the screen height equally, so four rows always fit.
-                layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f)
-            }
-            rowSlots.forEach { slot -> row.addView(createButton(slot)) }
-            addView(row)
+        val leftColumn = column(1f).apply {
+            PANELS.forEach { addView(keyRow(listOf(it), textSp = 15f, weight = 1f)) }
+        }
+        rightColumn = column(2f).apply {
+            FUNCTION_KEYS.chunked(6).forEach { addView(keyRow(it, textSp = 13f, weight = 0.6f)) }
+            ACTION_SLOTS.chunked(3).forEach { addView(keyRow(it, textSp = 26f, weight = 1f)) }
+        }
+        addView(leftColumn)
+        addView(rightColumn)
+    }
+
+    /** Puts the modifier buttons under the action buttons. */
+    fun setModifierRow(row: View) {
+        row.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 0.7f)
+        rightColumn.addView(row)
+    }
+
+    private fun column(weight: Float) = LinearLayout(context).apply {
+        orientation = VERTICAL
+        isMotionEventSplittingEnabled = true
+        layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, weight)
+    }
+
+    private fun keyRow(slots: List<Slot>, textSp: Float, weight: Float): LinearLayout {
+        return LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            isMotionEventSplittingEnabled = true
+            // Rows share the column's height by weight, so everything always fits.
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, weight)
+            slots.forEach { addView(createButton(it, textSp)) }
         }
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun createButton(slot: Slot): View {
+    private fun createButton(slot: Slot, textSp: Float): View {
         return TextView(context).apply {
             text = slot.label
-            contentDescription = "Action ${slot.label}"
+            contentDescription = slot.label
             gravity = Gravity.CENTER
-            setTextColor(keyColor)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 30f)
+            setTextColor(theme.text)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, textSp)
             typeface = Typeface.DEFAULT_BOLD
+            maxLines = 1
             background = createKeyBackground()
             layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply {
-                val margin = dp(6)
+                val margin = dp(3)
                 setMargins(margin, margin, margin, margin)
             }
             setOnTouchListener { view, event ->
@@ -105,13 +126,13 @@ class ExternalActionBarView(
 
     private fun createKeyBackground(): StateListDrawable {
         fun shape(fill: Int) = GradientDrawable().apply {
-            cornerRadius = dp(14).toFloat()
+            cornerRadius = dp(10).toFloat()
             setColor(fill)
-            setStroke(dp(2), keyBorder)
+            setStroke(dp(2), theme.border)
         }
         return StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_pressed), shape(keyPressed))
-            addState(intArrayOf(), shape(keyBackground))
+            addState(intArrayOf(android.R.attr.state_pressed), shape(theme.pressed))
+            addState(intArrayOf(), shape(theme.key))
         }
     }
 
@@ -125,10 +146,33 @@ class ExternalActionBarView(
     }
 
     private companion object {
-        const val COLUMNS = 3
+        // WoW's default bindings for the character, spellbook and similar windows.
+        val PANELS = listOf(
+            Slot("Map", XKeycode.KEY_M),
+            Slot("Character", XKeycode.KEY_C),
+            Slot("Spellbook", XKeycode.KEY_P),
+            Slot("Talents", XKeycode.KEY_N),
+            Slot("Skills", XKeycode.KEY_K),
+            Slot("Quest Log", XKeycode.KEY_L),
+        )
+
+        val FUNCTION_KEYS = listOf(
+            Slot("F1", XKeycode.KEY_F1),
+            Slot("F2", XKeycode.KEY_F2),
+            Slot("F3", XKeycode.KEY_F3),
+            Slot("F4", XKeycode.KEY_F4),
+            Slot("F5", XKeycode.KEY_F5),
+            Slot("F6", XKeycode.KEY_F6),
+            Slot("F7", XKeycode.KEY_F7),
+            Slot("F8", XKeycode.KEY_F8),
+            Slot("F9", XKeycode.KEY_F9),
+            Slot("F10", XKeycode.KEY_F10),
+            Slot("F11", XKeycode.KEY_F11),
+            Slot("F12", XKeycode.KEY_F12),
+        )
 
         // WoW's default bindings for Action Bar 1, slots 1 to 12.
-        val SLOTS = listOf(
+        val ACTION_SLOTS = listOf(
             Slot("1", XKeycode.KEY_1),
             Slot("2", XKeycode.KEY_2),
             Slot("3", XKeycode.KEY_3),

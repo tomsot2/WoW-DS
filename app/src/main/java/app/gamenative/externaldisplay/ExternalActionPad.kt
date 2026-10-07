@@ -96,12 +96,19 @@ class ExternalActionPad(
             setPadding(m * 2, m, m * 2, m)
             addView(trackpadButton)
             addView(View(context), LayoutParams(0, 1, 1f))
-            addView(modifierButton("Shift", XKeycode.KEY_SHIFT_L))
-            addView(modifierButton("Ctrl", XKeycode.KEY_CTRL_L))
-            addView(modifierButton("Alt", XKeycode.KEY_ALT_L))
-            addView(View(context), LayoutParams(0, 1, 1f))
             addView(keyboardButton)
         }
+        // Modifier buttons sit under the action buttons on the pad.
+        padView.setModifierRow(
+            LinearLayout(context).apply {
+                orientation = HORIZONTAL
+                val m = (3 * density).toInt()
+                setPadding(0, m, 0, 0)
+                addView(modifierButton("Shift", XKeycode.KEY_SHIFT_L))
+                addView(modifierButton("Ctrl", XKeycode.KEY_CTRL_L))
+                addView(modifierButton("Alt", XKeycode.KEY_ALT_L))
+            },
+        )
         val body = FrameLayout(context).apply {
             layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
             addView(padView)
@@ -126,9 +133,9 @@ class ExternalActionPad(
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             contentDescription = label
-            layoutParams = LayoutParams((72 * density).toInt(), (40 * density).toInt()).apply {
-                val m = (4 * density).toInt()
-                setMargins(m, 0, m, 0)
+            layoutParams = LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply {
+                val m = (3 * density).toInt()
+                setMargins(m, 0, m, m)
             }
             fun style(active: Boolean) {
                 val locked = key in lockedModifiers
