@@ -93,8 +93,14 @@ class ExternalActionPad(
 
         val header = LinearLayout(context).apply {
             orientation = HORIZONTAL
-            val m = (6 * density).toInt()
-            setPadding((8 * density).toInt(), m, (8 * density).toInt(), m)
+            // The two header buttons sit on a faint gold backing, like the button groups below.
+            background = theme.groupBackground(density, strong = false)
+            val side = (8 * density).toInt()
+            layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                setMargins(side, side / 2, side, 0)
+            }
+            val inset = (4 * density).toInt()
+            setPadding(inset, inset, inset, inset)
             addView(trackpadButton)
             addView(keyboardButton)
         }

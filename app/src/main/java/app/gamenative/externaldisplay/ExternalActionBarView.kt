@@ -38,6 +38,20 @@ class ExternalActionBarView(
 
     private val downKeys = mutableSetOf<XKeycode>()
     private val rightColumn: LinearLayout
+    private val modifierGroup: LinearLayout
+
+    /** A backing panel that hides itself while it has nothing in it (e.g. the modifiers moved to the trackpad). */
+    private class Group(context: Context) : LinearLayout(context) {
+        override fun onViewAdded(child: View?) {
+            super.onViewAdded(child)
+            visibility = VISIBLE
+        }
+
+        override fun onViewRemoved(child: View?) {
+            super.onViewRemoved(child)
+            if (childCount == 0) visibility = GONE
+        }
+    }
 
     init {
         orientation = HORIZONTAL
@@ -46,12 +60,27 @@ class ExternalActionBarView(
         val pad = dp(8)
         setPadding(pad, pad, pad, pad)
 
-        val leftColumn = column(LEFT_WEIGHT).apply {
+        // Each group of buttons sits on its own faint backing; the number block's is the strongest.
+        val leftColumn = group(vertical = true, strong = false).apply {
+            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, LEFT_WEIGHT).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) }
             PANELS.forEach { addView(keyRow(listOf(it), textSp = 15f, weight = 1f, muted = true)) }
         }
+        modifierGroup = group(vertical = false, strong = false).apply {
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 0.7f).apply { setMargins(0, dp(3), 0, dp(3)) }
+            visibility = GONE
+        }
+        val numberGroup = group(vertical = true, strong = true).apply {
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 4f).apply { setMargins(0, dp(3), 0, dp(3)) }
+            ACTION_SLOTS.chunked(3).forEach { addView(keyRow(it, textSp = 26f, weight = 1f, raised = true)) }
+        }
+        val functionGroup = group(vertical = true, strong = false).apply {
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1.2f).apply { setMargins(0, dp(3), 0, dp(3)) }
+            FUNCTION_KEYS.chunked(6).forEach { addView(keyRow(it, textSp = 13f, weight = 1f, muted = true)) }
+        }
         rightColumn = column(RIGHT_WEIGHT).apply {
-            ACTION_SLOTS.chunked(3).forEach { addView(keyRow(it, textSp = 26f, weight = 1f)) }
-            FUNCTION_KEYS.chunked(6).forEach { addView(keyRow(it, textSp = 13f, weight = 0.6f, muted = true)) }
+            addView(modifierGroup)
+            addView(numberGroup)
+            addView(functionGroup)
         }
         addView(leftColumn)
         addView(rightColumn)
@@ -60,8 +89,15 @@ class ExternalActionBarView(
     /** Puts the modifier buttons above the action buttons. */
     fun setModifierRow(row: View) {
         (row.parent as? android.view.ViewGroup)?.removeView(row)
-        row.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 0.7f)
-        rightColumn.addView(row, 0)
+        row.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+        modifierGroup.addView(row)
+    }
+
+    private fun group(vertical: Boolean, strong: Boolean): LinearLayout = Group(context).apply {
+        orientation = if (vertical) VERTICAL else HORIZONTAL
+        isMotionEventSplittingEnabled = true
+        background = theme.groupBackground(resources.displayMetrics.density, strong)
+        setPadding(dp(4), dp(4), dp(4), dp(4))
     }
 
     private fun column(weight: Float) = LinearLayout(context).apply {
@@ -71,18 +107,18 @@ class ExternalActionBarView(
     }
 
     /** [muted] dims the button trim; the action buttons (1-9, 0, -, =) are left at full strength. */
-    private fun keyRow(slots: List<Slot>, textSp: Float, weight: Float, muted: Boolean = false): LinearLayout {
+    private fun keyRow(slots: List<Slot>, textSp: Float, weight: Float, muted: Boolean = false, raised: Boolean = false): LinearLayout {
         return LinearLayout(context).apply {
             orientation = HORIZONTAL
             isMotionEventSplittingEnabled = true
             // Rows share the column's height by weight, so everything always fits.
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, weight)
-            slots.forEach { addView(createButton(it, textSp, muted)) }
+            slots.forEach { addView(createButton(it, textSp, muted, raised)) }
         }
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun createButton(slot: Slot, textSp: Float, muted: Boolean): View {
+    private fun createButton(slot: Slot, textSp: Float, muted: Boolean, raised: Boolean): View {
         return TextView(context).apply {
             text = slot.label
             contentDescription = slot.label
@@ -91,7 +127,7 @@ class ExternalActionBarView(
             setTextSize(TypedValue.COMPLEX_UNIT_SP, textSp)
             typeface = theme.typeface
             maxLines = 1
-            background = createKeyBackground(muted)
+            background = createKeyBackground(muted, raised)
             layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply {
                 val margin = dp(3)
                 setMargins(margin, margin, margin, margin)
@@ -124,7 +160,8 @@ class ExternalActionBarView(
         onKeyTapped()
     }
 
-    private fun createKeyBackground(muted: Boolean) = theme.buttonStates(resources.displayMetrics.density, 10f, muted)
+    private fun createKeyBackground(muted: Boolean, raised: Boolean) =
+        theme.buttonStates(resources.displayMetrics.density, 10f, muted, raised)
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 

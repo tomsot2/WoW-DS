@@ -22,8 +22,20 @@ data class PadTheme(
     val borderBright: Int,
     val text: Int,
     val textPressed: Int,
+    /** Slightly lighter resting face, for the buttons that should stand out (the action buttons). */
+    val raisedTop: Int = 0xFF3D3226.toInt(),
+    val raisedBottom: Int = 0xFF261D15.toInt(),
 ) {
     val typeface: Typeface = Typeface.create(Typeface.SERIF, Typeface.BOLD)
+
+    private fun withAlpha(color: Int, alpha: Int): Int = (color and 0x00FFFFFF) or (alpha shl 24)
+
+    /** Faint gold panel behind a group of buttons. [strong] is for the main group. */
+    fun groupBackground(density: Float, strong: Boolean): Drawable = GradientDrawable().apply {
+        cornerRadius = 12 * density
+        setColor(withAlpha(border, if (strong) 0x21 else 0x0F))
+        setStroke(density.toInt().coerceAtLeast(1), withAlpha(border, if (strong) 0x59 else 0x2E))
+    }
 
     /** Dim, thinner trim for secondary buttons, so the action buttons stand out. */
     private val borderMuted: Int get() = blend(border, keyBottom, MUTED_AMOUNT)
@@ -49,10 +61,11 @@ data class PadTheme(
         active: Boolean,
         emphasized: Boolean = false,
         muted: Boolean = false,
+        raised: Boolean = false,
     ): Drawable {
         val dim = muted && !active && !emphasized
-        val top = if (active) pressedTop else keyTop
-        val bottom = if (active) pressedBottom else keyBottom
+        val top = if (active) pressedTop else if (raised) raisedTop else keyTop
+        val bottom = if (active) pressedBottom else if (raised) raisedBottom else keyBottom
         val outer = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(top, bottom)).apply {
             cornerRadius = radiusDp * density
             val strokeDp = if (emphasized) 4 else if (dim) 2 else 3
@@ -68,10 +81,11 @@ data class PadTheme(
     }
 
     /** Normal face, switching to the glowing face while pressed. */
-    fun buttonStates(density: Float, radiusDp: Float, muted: Boolean = false): StateListDrawable = StateListDrawable().apply {
-        addState(intArrayOf(android.R.attr.state_pressed), buttonBackground(density, radiusDp, active = true))
-        addState(intArrayOf(), buttonBackground(density, radiusDp, active = false, muted = muted))
-    }
+    fun buttonStates(density: Float, radiusDp: Float, muted: Boolean = false, raised: Boolean = false): StateListDrawable =
+        StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), buttonBackground(density, radiusDp, active = true))
+            addState(intArrayOf(), buttonBackground(density, radiusDp, active = false, muted = muted, raised = raised))
+        }
 
     companion object {
         // How far a muted border is pulled toward the button face (0 = unchanged, 1 = invisible).
