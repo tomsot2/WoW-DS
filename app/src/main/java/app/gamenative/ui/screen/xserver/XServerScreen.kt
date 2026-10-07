@@ -2475,10 +2475,20 @@ fun XServerScreen(
                 } else {
                     null
                 }
+            // Hide the second-screen pad while the app is in the background, bring it back on return.
+            val externalDisplayLifecycleObserver = LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_PAUSE -> externalDisplayController?.stop()
+                    Lifecycle.Event.ON_RESUME -> externalDisplayController?.start()
+                    else -> Unit
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(externalDisplayLifecycleObserver)
             mainRoot.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
                 override fun onViewAttachedToWindow(v: View) {}
 
                 override fun onViewDetachedFromWindow(v: View) {
+                    lifecycleOwner.lifecycle.removeObserver(externalDisplayLifecycleObserver)
                     externalDisplayController?.stop()
                     swapController?.stop()
                 }
