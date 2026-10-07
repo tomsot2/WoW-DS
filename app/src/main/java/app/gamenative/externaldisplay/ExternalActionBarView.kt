@@ -12,8 +12,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.content.ContextCompat
-import app.gamenative.R
 import com.winlator.xserver.XKeycode
 import com.winlator.xserver.XServer
 
@@ -26,22 +24,22 @@ import com.winlator.xserver.XServer
  * One touch is exactly one key press and one key release. There are no macros, sequences or timed
  * repeats here: anything multi-step belongs in WoW's own macro system.
  */
-class ExternalActionBarView(context: Context, private val xServer: XServer) : LinearLayout(context) {
+class ExternalActionBarView(context: Context, private val xServer: XServer, private val theme: PadTheme) : LinearLayout(context) {
 
     private data class Slot(val label: String, val key: XKeycode)
 
     private val downKeys = mutableSetOf<XKeycode>()
 
-    private val keyColor = ContextCompat.getColor(context, R.color.external_display_key_color)
-    private val keyBackground = ContextCompat.getColor(context, R.color.external_display_key_background)
-    private val keyPressed = ContextCompat.getColor(context, R.color.external_display_key_highlight_strong_background)
-    private val keyBorder = 0xFF3A3A3A.toInt()
+    private val keyColor = theme.text
+    private val keyBackground = theme.key
+    private val keyPressed = theme.pressed
+    private val keyBorder = theme.border
 
     init {
         orientation = VERTICAL
         gravity = Gravity.CENTER
         isMotionEventSplittingEnabled = true
-        setBackgroundColor(ContextCompat.getColor(context, R.color.external_display_surface_background))
+        setBackgroundColor(theme.background)
         val pad = dp(12)
         setPadding(pad, pad, pad, pad)
 

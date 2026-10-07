@@ -14,9 +14,9 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
-import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import app.gamenative.R
+import app.gamenative.ui.screen.wow.WowFlavor
 import com.winlator.container.Container
 import com.winlator.widget.TouchpadView
 import com.winlator.xserver.XServer
@@ -210,7 +210,7 @@ private class ExternalInputPresentation(
                 setContentView(hybrid)
             }
             ExternalDisplayInputController.Mode.BUTTONS -> {
-                setContentView(ActionPadWithKeyboard(context, xServer))
+                setContentView(ExternalActionPad(context, xServer, PadTheme.forFlavor(WowFlavor.current), touchpadViewProvider))
             }
             else -> {
                 setContentView(FrameLayout(context))
@@ -285,64 +285,5 @@ private class HybridInputLayout(
         } else {
             0f
         }
-    }
-}
-
-/**
- * The action button pad plus a keyboard toggle. The keyboard is the app's own on-screen keyboard,
- * drawn over the bottom of the pad, so it works no matter where the system keyboard decides to appear.
- */
-private class ActionPadWithKeyboard(context: Context, xServer: XServer) : LinearLayout(context) {
-    init {
-        orientation = VERTICAL
-        val surface = ContextCompat.getColor(context, R.color.external_display_surface_background)
-        setBackgroundColor(surface)
-        val density = resources.displayMetrics.density
-
-        val keyboardView = ExternalOnScreenKeyboardView(context, xServer).apply {
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { gravity = Gravity.BOTTOM }
-            visibility = View.GONE
-        }
-
-        val toggle = ImageButton(context).apply {
-            val size = (40 * density).toInt()
-            val margin = (4 * density).toInt()
-            layoutParams = LayoutParams(size, size).apply {
-                gravity = Gravity.END
-                setMargins(margin, margin, margin * 3, 0)
-            }
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(ContextCompat.getColor(context, R.color.external_display_key_background))
-            }
-            setImageResource(R.drawable.icon_keyboard)
-            setColorFilter(ContextCompat.getColor(context, R.color.external_display_key_color))
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
-            val pad = (8 * density).toInt()
-            setPadding(pad, pad, pad, pad)
-            contentDescription = "Keyboard"
-            setOnClickListener {
-                keyboardView.visibility = if (keyboardView.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-            }
-        }
-
-        val body = FrameLayout(context).apply {
-            layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
-            addView(
-                ExternalActionBarView(context, xServer).apply {
-                    layoutParams = FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                    )
-                },
-            )
-            addView(keyboardView)
-        }
-
-        addView(toggle)
-        addView(body)
     }
 }
