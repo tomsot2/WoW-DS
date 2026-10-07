@@ -2,9 +2,6 @@ package app.gamenative.externaldisplay
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.StateListDrawable
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
@@ -90,7 +87,7 @@ class ExternalActionBarView(
             gravity = Gravity.CENTER
             setTextColor(theme.text)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, textSp)
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = theme.typeface
             maxLines = 1
             background = createKeyBackground()
             layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply {
@@ -125,17 +122,7 @@ class ExternalActionBarView(
         onKeyTapped()
     }
 
-    private fun createKeyBackground(): StateListDrawable {
-        fun shape(fill: Int) = GradientDrawable().apply {
-            cornerRadius = dp(10).toFloat()
-            setColor(fill)
-            setStroke(dp(2), theme.border)
-        }
-        return StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_pressed), shape(theme.pressed))
-            addState(intArrayOf(), shape(theme.key))
-        }
-    }
+    private fun createKeyBackground() = theme.buttonStates(resources.displayMetrics.density, 10f)
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 

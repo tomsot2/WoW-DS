@@ -1,7 +1,6 @@
 package app.gamenative.externaldisplay
 
 import android.content.Context
-import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -59,11 +58,7 @@ class ExternalActionPad(
                 val m = (10 * density).toInt()
                 setMargins(m, 0, m, m)
             }
-            background = GradientDrawable().apply {
-                cornerRadius = 16 * density
-                setColor(theme.key)
-                setStroke((2 * density).toInt(), theme.border)
-            }
+            background = theme.buttonBackground(density, 16f, active = false)
             touchpadViewProvider()?.let { setSimTouchScreen(it.isSimTouchScreen) }
             // Slower, steadier cursor for precise aiming: no speed-up on fast swipes, and a lower base speed.
             setCursorAcceleration(TRACKPAD_ACCELERATION)
@@ -134,7 +129,7 @@ class ExternalActionPad(
             gravity = Gravity.CENTER
             setTextColor(theme.text)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            typeface = theme.typeface
             contentDescription = label
             layoutParams = LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply {
                 val m = (3 * density).toInt()
@@ -142,11 +137,8 @@ class ExternalActionPad(
             }
             fun style(active: Boolean) {
                 val locked = key in lockedModifiers
-                background = GradientDrawable().apply {
-                    cornerRadius = 12 * density
-                    setColor(if (active) theme.pressed else theme.key)
-                    setStroke(((if (locked) 4 else 2) * density).toInt(), if (locked) theme.text else theme.border)
-                }
+                background = theme.buttonBackground(density, 12f, active, emphasized = locked)
+                setTextColor(if (active) theme.textPressed else theme.text)
             }
             style(false)
             modifierStyles[key] = { active -> style(active) }
@@ -188,7 +180,7 @@ class ExternalActionPad(
             gravity = Gravity.CENTER
             setTextColor(theme.text)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            typeface = theme.typeface
             contentDescription = label
             layoutParams = LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply {
                 val m = (4 * density).toInt()
@@ -201,11 +193,8 @@ class ExternalActionPad(
             var lastDownAt = 0L
 
             fun style() {
-                background = GradientDrawable().apply {
-                    cornerRadius = 12 * density
-                    setColor(if (pressed || locked) theme.pressed else theme.key)
-                    setStroke(((if (locked) 4 else 2) * density).toInt(), if (locked) theme.text else theme.border)
-                }
+                background = theme.buttonBackground(density, 12f, pressed || locked, emphasized = locked)
+                setTextColor(if (pressed || locked) theme.textPressed else theme.text)
             }
             // Same two paths the trackpad itself uses: the Wine mouse in relative mode, X pointer buttons otherwise.
             fun send(down: Boolean) {
@@ -332,11 +321,7 @@ class ExternalActionPad(
     }
 
     private fun styleButton(button: ImageButton, active: Boolean) {
-        button.background = GradientDrawable().apply {
-            cornerRadius = 12 * density
-            setColor(if (active) theme.pressed else theme.key)
-            setStroke((2 * density).toInt(), theme.border)
-        }
-        button.setColorFilter(theme.text)
+        button.background = theme.buttonBackground(density, 12f, active)
+        button.setColorFilter(if (active) theme.textPressed else theme.text)
     }
 }
