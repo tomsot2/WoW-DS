@@ -55,7 +55,7 @@ class PhysicalControllerHandler(
         private const val SEQUENCE_PRESS_MS = 80L
 
         // Cursor-mode right stick: speed multiplier at full deflection (1.0x at the smallest deflection).
-        private const val RIGHT_STICK_MAX_SPEED = 1.5f
+        private const val RIGHT_STICK_MAX_SPEED = 2.0f
     }
 
     private val TAG = "gncontrol"
@@ -441,10 +441,11 @@ class PhysicalControllerHandler(
         if (Math.abs(value) > ControlElement.STICK_DEAD_ZONE) {
             val active = if (value > 0f) positiveBinding else negativeBinding
             val inactive = if (value > 0f) negativeBinding else positiveBinding
-            // Speed ramps from 1.0x at the smallest deflection up to RIGHT_STICK_MAX_SPEED at full tilt.
+            // Speed ramps from 1.0x at the smallest deflection up to RIGHT_STICK_MAX_SPEED at full tilt,
+            // slowly at first and faster near the end (squared curve).
             val deadZone = ControlElement.STICK_DEAD_ZONE
             val tilt = ((Math.abs(value) - deadZone) / (1f - deadZone)).coerceIn(0f, 1f)
-            val scaled = value * (1f + (RIGHT_STICK_MAX_SPEED - 1f) * tilt)
+            val scaled = value * (1f + (RIGHT_STICK_MAX_SPEED - 1f) * tilt * tilt)
             updateMouseMoveContribution(inactive, false, 0f, if (value > 0f) negKey else posKey, deviceId)
             updateMouseMoveContribution(active, true, scaled, if (value > 0f) posKey else negKey, deviceId)
         } else {
