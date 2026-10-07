@@ -30,9 +30,11 @@ class ExternalOnScreenKeyboardView(
         val weight: Float = 1f,
         val isLetter: Boolean = false,
         val action: Action = Action.INPUT,
+        /** Symbol-page keys that type the shifted character (e.g. "!" is Shift+1). */
+        val sendShifted: Boolean = false,
     )
 
-    private enum class Action { INPUT, SHIFT, BACKSPACE, ENTER, SPACE, TAB, ESC, ARROW_LEFT, ARROW_DOWN, ARROW_RIGHT, ARROW_UP }
+    private enum class Action { INPUT, SHIFT, BACKSPACE, ENTER, SPACE, TAB, ESC, ARROW_LEFT, ARROW_DOWN, ARROW_RIGHT, ARROW_UP, SYMBOLS }
 
     private data class KeyButton(
         val spec: KeySpec,
@@ -42,6 +44,7 @@ class ExternalOnScreenKeyboardView(
     private val keyButtons = mutableListOf<KeyButton>()
     private val downKeys = mutableSetOf<XKeycode>()
     private var shiftState: ShiftState = ShiftState.OFF
+    private var showSymbols = false
 
     private val keyboardBackgroundColor: Int = ContextCompat.getColor(context, R.color.external_display_keyboard_background)
     private val keyBackgroundColor: Int = ContextCompat.getColor(context, R.color.external_display_key_background)
@@ -60,6 +63,13 @@ class ExternalOnScreenKeyboardView(
     }
 
     private fun buildLayout() {
+        keyButtons.clear()
+        removeAllViews()
+        if (showSymbols) buildSymbolsPage() else buildMainPage()
+    }
+
+    /** Letters, digits and the few symbols used when chatting. Everything else lives on the symbols page. */
+    private fun buildMainPage() {
         addRow(
             listOf(
                 KeySpec("Esc", keycode = XKeycode.KEY_ESC, weight = 1.25f, action = Action.ESC),
@@ -73,8 +83,6 @@ class ExternalOnScreenKeyboardView(
                 KeySpec("8", "*", XKeycode.KEY_8),
                 KeySpec("9", "(", XKeycode.KEY_9),
                 KeySpec("0", ")", XKeycode.KEY_0),
-                KeySpec("-", "_", XKeycode.KEY_MINUS),
-                KeySpec("=", "+", XKeycode.KEY_EQUAL),
                 KeySpec("⌫", keycode = XKeycode.KEY_BKSP, weight = 1.75f, action = Action.BACKSPACE),
             ),
         )
@@ -92,9 +100,6 @@ class ExternalOnScreenKeyboardView(
                 KeySpec("i", "I", XKeycode.KEY_I, isLetter = true),
                 KeySpec("o", "O", XKeycode.KEY_O, isLetter = true),
                 KeySpec("p", "P", XKeycode.KEY_P, isLetter = true),
-                KeySpec("[", "{", XKeycode.KEY_BRACKET_LEFT),
-                KeySpec("]", "}", XKeycode.KEY_BRACKET_RIGHT),
-                KeySpec("\\", "|", XKeycode.KEY_BACKSLASH, weight = 1.25f),
             ),
         )
 
@@ -110,15 +115,13 @@ class ExternalOnScreenKeyboardView(
                 KeySpec("j", "J", XKeycode.KEY_J, isLetter = true),
                 KeySpec("k", "K", XKeycode.KEY_K, isLetter = true),
                 KeySpec("l", "L", XKeycode.KEY_L, isLetter = true),
-                KeySpec(";", ":", XKeycode.KEY_SEMICOLON),
-                KeySpec("'", "\"", XKeycode.KEY_APOSTROPHE),
                 KeySpec("Enter", keycode = XKeycode.KEY_ENTER, weight = 2.0f, action = Action.ENTER),
             ),
         )
 
         addRow(
             listOf(
-                KeySpec("`", "~", XKeycode.KEY_GRAVE, weight = 1.25f),
+                KeySpec("Sym", weight = 1.25f, action = Action.SYMBOLS),
                 KeySpec("z", "Z", XKeycode.KEY_Z, isLetter = true),
                 KeySpec("x", "X", XKeycode.KEY_X, isLetter = true),
                 KeySpec("c", "C", XKeycode.KEY_C, isLetter = true),
@@ -138,6 +141,68 @@ class ExternalOnScreenKeyboardView(
                 KeySpec("Space", keycode = XKeycode.KEY_SPACE, weight = 6f, action = Action.SPACE),
                 KeySpec("←", keycode = XKeycode.KEY_LEFT, weight = 1.25f, action = Action.ARROW_LEFT),
                 KeySpec("↓", keycode = XKeycode.KEY_DOWN, weight = 1.25f, action = Action.ARROW_DOWN),
+                KeySpec("→", keycode = XKeycode.KEY_RIGHT, weight = 1.25f, action = Action.ARROW_RIGHT),
+            ),
+        )
+    }
+
+    /** Every symbol key, each typing the character it shows. "ABC" returns to the letters. */
+    private fun buildSymbolsPage() {
+        fun sym(label: String, key: XKeycode, shifted: Boolean) = KeySpec(label, keycode = key, sendShifted = shifted)
+
+        addRow(
+            listOf(
+                sym("!", XKeycode.KEY_1, true),
+                sym("@", XKeycode.KEY_2, true),
+                sym("#", XKeycode.KEY_3, true),
+                sym("$", XKeycode.KEY_4, true),
+                sym("%", XKeycode.KEY_5, true),
+                sym("^", XKeycode.KEY_6, true),
+                sym("&", XKeycode.KEY_7, true),
+                sym("*", XKeycode.KEY_8, true),
+                sym("(", XKeycode.KEY_9, true),
+                sym(")", XKeycode.KEY_0, true),
+                KeySpec("⌫", keycode = XKeycode.KEY_BKSP, weight = 1.75f, action = Action.BACKSPACE),
+            ),
+        )
+
+        addRow(
+            listOf(
+                sym("-", XKeycode.KEY_MINUS, false),
+                sym("_", XKeycode.KEY_MINUS, true),
+                sym("=", XKeycode.KEY_EQUAL, false),
+                sym("+", XKeycode.KEY_EQUAL, true),
+                sym("[", XKeycode.KEY_BRACKET_LEFT, false),
+                sym("]", XKeycode.KEY_BRACKET_RIGHT, false),
+                sym("{", XKeycode.KEY_BRACKET_LEFT, true),
+                sym("}", XKeycode.KEY_BRACKET_RIGHT, true),
+                sym("\\", XKeycode.KEY_BACKSLASH, false),
+                sym("|", XKeycode.KEY_BACKSLASH, true),
+            ),
+        )
+
+        addRow(
+            listOf(
+                sym(";", XKeycode.KEY_SEMICOLON, false),
+                sym(":", XKeycode.KEY_SEMICOLON, true),
+                sym("'", XKeycode.KEY_APOSTROPHE, false),
+                sym("\"", XKeycode.KEY_APOSTROPHE, true),
+                sym("`", XKeycode.KEY_GRAVE, false),
+                sym("~", XKeycode.KEY_GRAVE, true),
+                sym("<", XKeycode.KEY_COMMA, true),
+                sym(">", XKeycode.KEY_PERIOD, true),
+                sym("?", XKeycode.KEY_SLASH, true),
+                KeySpec("Enter", keycode = XKeycode.KEY_ENTER, weight = 1.75f, action = Action.ENTER),
+            ),
+        )
+
+        addRow(
+            listOf(
+                KeySpec("ABC", weight = 1.5f, action = Action.SYMBOLS),
+                KeySpec("Space", keycode = XKeycode.KEY_SPACE, weight = 6f, action = Action.SPACE),
+                KeySpec("←", keycode = XKeycode.KEY_LEFT, weight = 1.25f, action = Action.ARROW_LEFT),
+                KeySpec("↓", keycode = XKeycode.KEY_DOWN, weight = 1.25f, action = Action.ARROW_DOWN),
+                KeySpec("↑", keycode = XKeycode.KEY_UP, weight = 1.25f, action = Action.ARROW_UP),
                 KeySpec("→", keycode = XKeycode.KEY_RIGHT, weight = 1.25f, action = Action.ARROW_RIGHT),
             ),
         )
@@ -189,7 +254,7 @@ class ExternalOnScreenKeyboardView(
 
     private fun onKeyDown(spec: KeySpec) {
         when (spec.action) {
-            Action.SHIFT -> Unit
+            Action.SHIFT, Action.SYMBOLS -> Unit
             Action.BACKSPACE -> pressKey(XKeycode.KEY_BKSP)
             Action.ENTER -> pressKey(XKeycode.KEY_ENTER)
             Action.SPACE -> pressKey(XKeycode.KEY_SPACE)
@@ -201,7 +266,7 @@ class ExternalOnScreenKeyboardView(
             Action.ARROW_UP -> pressKey(XKeycode.KEY_UP)
             Action.INPUT -> {
                 val keycode = spec.keycode ?: return
-                val useShift = when (shiftState) {
+                val useShift = spec.sendShifted || when (shiftState) {
                     ShiftState.OFF -> false
                     ShiftState.ON -> true
                     ShiftState.CAPS -> spec.isLetter
@@ -218,6 +283,11 @@ class ExternalOnScreenKeyboardView(
     private fun onKeyUp(spec: KeySpec, cancel: Boolean) {
         when (spec.action) {
             Action.SHIFT -> if (!cancel) cycleShift()
+            Action.SYMBOLS -> if (!cancel) post {
+                showSymbols = !showSymbols
+                buildLayout()
+                refreshLabels()
+            }
             Action.BACKSPACE -> releaseKey(XKeycode.KEY_BKSP)
             Action.ENTER -> releaseKey(XKeycode.KEY_ENTER)
             Action.SPACE -> releaseKey(XKeycode.KEY_SPACE)
