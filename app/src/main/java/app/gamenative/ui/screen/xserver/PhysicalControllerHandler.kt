@@ -77,6 +77,16 @@ class PhysicalControllerHandler(
     // Toggled by clicking R3 (stick click). Touched on the main thread only.
     private var rightStickMouseMode = false
 
+    // Physical key code -> mouse button binding for A/B clicks started while in cursor mode.
+    private val cursorClickBindings = mutableMapOf<Int, Binding>()
+
+    private fun releaseCursorClicks() {
+        for (click in cursorClickBindings.values) {
+            click.pointerButton?.let { xServer?.injectPointerButtonRelease(it) }
+        }
+        cursorClickBindings.clear()
+    }
+
     // Tracks whether SHOW_KEYBOARD is currently held, so onShowKeyboard fires once per press (rising edge only)
     private var showKeyboardPressed = false
     private var radialMenuPressed = false
@@ -156,6 +166,7 @@ class PhysicalControllerHandler(
         clearMouseMoveContributions()
         clearScrollRepeats()
         activeSequenceTriggerBindings.clear()
+        releaseCursorClicks()
         rightStickMouseMode = false
         showKeyboardPressed = false
         closeRadialMenuIfOpen(commit = false)
@@ -191,6 +202,29 @@ class PhysicalControllerHandler(
                     setRightStickMouseMode(!rightStickMouseMode, event.deviceId)
                 }
                 return true
+            }
+            if (controller != null && !radialMenuPressed) {
+                // Always finish a click we started, even if the mode was switched meanwhile.
+                if (event.action == KeyEvent.ACTION_UP) {
+                    cursorClickBindings.remove(keyCode)?.let { click ->
+                        click.pointerButton?.let { xServer?.injectPointerButtonRelease(it) }
+                        return true
+                    }
+                } else if (event.action == KeyEvent.ACTION_DOWN && rightStickMouseMode) {
+                    // Cursor mode: the pad's A / B buttons act as left / right click.
+                    val bindings = controller.getControllerBinding(keyCode)?.bindingCombo?.bindings
+                    val click = when {
+                        bindings == null -> null
+                        Binding.GAMEPAD_BUTTON_A in bindings -> Binding.MOUSE_LEFT_BUTTON
+                        Binding.GAMEPAD_BUTTON_B in bindings -> Binding.MOUSE_RIGHT_BUTTON
+                        else -> null
+                    }
+                    if (click != null) {
+                        cursorClickBindings[keyCode] = click
+                        click.pointerButton?.let { xServer?.injectPointerButtonPress(it) }
+                        return true
+                    }
+                }
             }
             if (controller != null) {
                 val controllerBinding = controller.getControllerBinding(keyCode)
