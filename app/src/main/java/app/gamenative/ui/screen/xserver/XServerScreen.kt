@@ -2371,6 +2371,13 @@ fun XServerScreen(
                         gyroStickMixer = { binding, isDown, offset, sourceKeyCode ->
                             updatePhysicalStickAndGetMixedValue(binding, isDown, offset, sourceKeyCode)
                         },
+                        onRightStickMouseModeChanged = { mouseMode ->
+                            android.widget.Toast.makeText(
+                                xServerView.context,
+                                if (mouseMode) "Right stick: cursor" else "Right stick: camera",
+                                android.widget.Toast.LENGTH_SHORT,
+                            ).show()
+                        },
                     )
                     radialMenuCoordinator?.bindPhysicalControllerHandler(physicalControllerHandler)
 
