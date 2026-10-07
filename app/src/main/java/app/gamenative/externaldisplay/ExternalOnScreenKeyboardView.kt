@@ -132,16 +132,12 @@ class ExternalOnScreenKeyboardView(
                 KeySpec(",", "<", XKeycode.KEY_COMMA),
                 KeySpec(".", ">", XKeycode.KEY_PERIOD),
                 KeySpec("/", "?", XKeycode.KEY_SLASH),
-                KeySpec("↑", keycode = XKeycode.KEY_UP, weight = 1.25f, action = Action.ARROW_UP),
             ),
         )
 
         addRow(
             listOf(
                 KeySpec("Space", keycode = XKeycode.KEY_SPACE, weight = 6f, action = Action.SPACE),
-                KeySpec("←", keycode = XKeycode.KEY_LEFT, weight = 1.25f, action = Action.ARROW_LEFT),
-                KeySpec("↓", keycode = XKeycode.KEY_DOWN, weight = 1.25f, action = Action.ARROW_DOWN),
-                KeySpec("→", keycode = XKeycode.KEY_RIGHT, weight = 1.25f, action = Action.ARROW_RIGHT),
             ),
         )
     }
