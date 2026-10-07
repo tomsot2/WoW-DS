@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
@@ -47,6 +48,7 @@ import app.gamenative.ui.theme.WowMuted
 import app.gamenative.ui.theme.WowSubtle
 import app.gamenative.utils.AppUpdater
 import app.gamenative.utils.StorageUtils
+import app.gamenative.utils.renderReleaseNotes
 import com.winlator.container.Container
 import com.winlator.container.ContainerManager
 import com.winlator.contents.ContentProfile
@@ -88,6 +90,7 @@ fun WoWForeverScreen(
     var isLaunching by remember { mutableStateOf(false) }
     var launchJob by remember { mutableStateOf<Job?>(null) }
     var hasSavedLogin by remember { mutableStateOf(BattleNetSignIn.load(context) != null) }
+    var showLoginDialog by remember { mutableStateOf(false) }
     var statusText by remember { mutableStateOf(READY_STATUS) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showStoragePermissionDialog by remember { mutableStateOf(false) }
@@ -192,6 +195,40 @@ fun WoWForeverScreen(
         statusText = READY_STATUS
     }
 
+    fun launchGame() {
+        if (isLaunching || files.isWrongGame) return
+        if (!files.hasStorageAccess) {
+            showStoragePermissionDialog = true
+            return
+        }
+        isLaunching = true
+        errorMessage = null
+        statusText = "Preparing components..."
+
+        launchJob = scope.launch {
+            try {
+                val containerId = withContext(Dispatchers.IO) {
+                    prepareLaunch(context, File(gamePath), gpu) { msg ->
+                        scope.launch(Dispatchers.Main) { statusText = msg }
+                    }
+                }
+                statusText = "Booting into World of Warcraft..."
+                onLaunch(containerId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: StorageAccessDeniedException) {
+                isLaunching = false
+                statusText = READY_STATUS
+                denyStorageAccess()
+            } catch (e: Exception) {
+                Timber.e(e, "Error launching WoW Forever")
+                errorMessage = e.message ?: "Launch failed"
+                statusText = "Launch failed"
+                isLaunching = false
+            }
+        }
+    }
+
     LifecycleResumeEffect(gamePath) {
         checkFiles()
         isLaunching = false
@@ -244,40 +281,6 @@ fun WoWForeverScreen(
     val filesMissing = !(files.dataExists && files.buildInfoExists)
     val canPlay = !isLaunching && !isUpdating && !filesMissing && !files.isWrongGame
 
-    fun launchGame() {
-        if (isLaunching || files.isWrongGame) return
-        if (!files.hasStorageAccess) {
-            showStoragePermissionDialog = true
-            return
-        }
-        isLaunching = true
-        errorMessage = null
-        statusText = "Preparing components..."
-
-        launchJob = scope.launch {
-            try {
-                val containerId = withContext(Dispatchers.IO) {
-                    prepareLaunch(context, File(gamePath), gpu) { msg ->
-                        scope.launch(Dispatchers.Main) { statusText = msg }
-                    }
-                }
-                statusText = "Booting into World of Warcraft..."
-                onLaunch(containerId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: StorageAccessDeniedException) {
-                isLaunching = false
-                statusText = READY_STATUS
-                denyStorageAccess()
-            } catch (e: Exception) {
-                Timber.e(e, "Error launching WoW Forever")
-                errorMessage = e.message ?: "Launch failed"
-                statusText = "Launch failed"
-                isLaunching = false
-            }
-        }
-    }
-
     fun performUpdate() {
         val target = versionStatus ?: return
         if (isUpdating || isLaunching) return
@@ -313,9 +316,16 @@ fun WoWForeverScreen(
         if (!files.hasStorageAccess && (files.dataExists || files.buildInfoExists)) {
             showStoragePermissionDialog = true
         }
-        Timber.i("WoWForeverScreen LaunchedEffect: gamePath=$gamePath, ready=$ready, shouldAutoLaunch=${WoWLauncherState.shouldAutoLaunch}")
+        Timber.i("WoWForeverScreen LaunchedEffect: gamePath=$gamePath, ready=$ready, hasSavedLogin=$hasSavedLogin, shouldAutoLaunch=${WoWLauncherState.shouldAutoLaunch}")
         when {
-            !ready -> PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
+            !ready || !hasSavedLogin -> {
+                WoWLauncherState.shouldAutoLaunch = false
+                PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
+                if (ready) {
+                    checkVersionStatus()
+                    checkAppUpdate()
+                }
+            }
             !WoWLauncherState.shouldAutoLaunch -> {
                 checkVersionStatus()
                 checkAppUpdate()
@@ -403,8 +413,11 @@ fun WoWForeverScreen(
                             label = if (files.isWrongGame) "Install Info ($BUILD_INFO - requires $TARGET_PRODUCT)" else "Install Info ($BUILD_INFO)",
                             ready = files.buildInfoExists && !files.isWrongGame
                         )
-                        CheckItem(label = "Turnip Driver & Proton 11 ARM64EC (Bundled)", ready = true)
                         CheckItem(label = "All Files Access Permission", ready = files.hasStorageAccess)
+                        CheckItem(
+                            label = if (hasSavedLogin) "Battle.net Login (Configured)" else "Battle.net Login (Configure below play button)",
+                            ready = hasSavedLogin,
+                        )
                         appUpdate?.let {
                             CheckItem(
                                 label = "App Build: v${BuildConfig.VERSION_NAME} (v${it.version} available)",
@@ -593,9 +606,16 @@ fun WoWForeverScreen(
                         if (!filesMissing) {
                             LinkButton("Change Location", Icons.Default.FolderOpen) { folderPicker.launch(null) }
                         }
+                        LinkButton(
+                            text = if (hasSavedLogin) "Update Login" else "Configure Login",
+                            icon = Icons.Default.Key,
+                        ) {
+                            showLoginDialog = true
+                        }
                         if (hasSavedLogin) {
                             LinkButton("Forget Saved Login", Icons.Default.Delete) {
                                 BattleNetSignIn.forget(context)
+                                BattleNetSignIn.removeLoginFile(File(gamePath))
                                 hasSavedLogin = false
                             }
                         }
@@ -605,6 +625,17 @@ fun WoWForeverScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+
+    if (showLoginDialog) {
+        BattleNetCredentialDialog(
+            onDismiss = { showLoginDialog = false },
+            onConfirm = { login ->
+                showLoginDialog = false
+                BattleNetSignIn.save(context, login)
+                hasSavedLogin = true
+            },
+        )
     }
 
     if (showStoragePermissionDialog) {
@@ -659,7 +690,7 @@ fun WoWForeverScreen(
                     Column {
                         if (update.notes.isNotBlank()) {
                             Text(
-                                text = update.notes.trim(),
+                                text = renderReleaseNotes(update.notes),
                                 fontSize = 12.sp,
                                 color = Color(0xFFCBD5E1),
                                 lineHeight = 16.sp,
@@ -935,6 +966,9 @@ private fun prepareLaunch(context: Context, gameRoot: File, gpu: GpuProfile, onS
     }
 
     val flavor = WowFlavor.current
+    BattleNetSignIn.load(context)?.let { login ->
+        BattleNetSignIn.writeLoginFile(gameRoot, login)
+    }
     if (!flavor.exeFile(gameRoot).exists()) {
         try {
             WowClientDownloader.download(gameRoot, onStatus)
