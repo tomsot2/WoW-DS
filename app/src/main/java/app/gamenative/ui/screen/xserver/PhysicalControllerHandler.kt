@@ -58,7 +58,7 @@ class PhysicalControllerHandler(
         private const val RIGHT_STICK_MAX_SPEED = 2.0f
 
         // Stick deflection (0..1) at which the speed ramp begins; below this the speed is 1.0x.
-        private const val RIGHT_STICK_RAMP_START = 0.75f
+        private const val RIGHT_STICK_RAMP_START = 0.90f
     }
 
     private val TAG = "gncontrol"
