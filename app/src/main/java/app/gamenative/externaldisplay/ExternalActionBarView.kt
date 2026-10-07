@@ -16,8 +16,8 @@ import com.winlator.xserver.XServer
  * The main second-screen pad.
  *
  * Left half: a column of window shortcuts (Map, Character, Spellbook, Talents, Skills, Quest Log).
- * Right half: F1-F12 in two rows, the 12 action buttons (4 rows of 3), and a slot underneath
- * for the modifier buttons (see [setModifierRow]).
+ * Right half, top to bottom: the modifier buttons (see [setModifierRow]), the 12 action buttons
+ * (4 rows of 3), and F1-F12 in two rows.
  *
  * Every button sends WoW's default key, so the pad works with the stock bindings and needs no addon.
  * To use different keys, change the lists in the companion object.
@@ -49,18 +49,18 @@ class ExternalActionBarView(
             PANELS.forEach { addView(keyRow(listOf(it), textSp = 15f, weight = 1f)) }
         }
         rightColumn = column(RIGHT_WEIGHT).apply {
-            FUNCTION_KEYS.chunked(6).forEach { addView(keyRow(it, textSp = 13f, weight = 0.6f)) }
             ACTION_SLOTS.chunked(3).forEach { addView(keyRow(it, textSp = 26f, weight = 1f)) }
+            FUNCTION_KEYS.chunked(6).forEach { addView(keyRow(it, textSp = 13f, weight = 0.6f)) }
         }
         addView(leftColumn)
         addView(rightColumn)
     }
 
-    /** Puts the modifier buttons under the action buttons. */
+    /** Puts the modifier buttons above the action buttons. */
     fun setModifierRow(row: View) {
         (row.parent as? android.view.ViewGroup)?.removeView(row)
         row.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 0.7f)
-        rightColumn.addView(row)
+        rightColumn.addView(row, 0)
     }
 
     private fun column(weight: Float) = LinearLayout(context).apply {
