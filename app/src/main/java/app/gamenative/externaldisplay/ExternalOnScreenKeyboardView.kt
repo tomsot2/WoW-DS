@@ -3,6 +3,7 @@ package app.gamenative.externaldisplay
 import android.content.Context
 import android.graphics.drawable.StateListDrawable
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.ViewGroup
 import android.widget.Button
@@ -219,7 +220,11 @@ class ExternalOnScreenKeyboardView(
                 layoutParams = LayoutParams(0, height, spec.weight).apply {
                     setMargins(margin, margin, margin, margin)
                 }
-                setOnTouchListener { _, event ->
+                setOnTouchListener { view, event ->
+                    if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                        // Same tap feedback as the pad buttons.
+                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    }
                     handleKeyTouch(spec, event)
                     false
                 }
