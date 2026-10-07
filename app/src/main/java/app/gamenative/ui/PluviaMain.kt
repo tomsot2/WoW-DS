@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -94,6 +95,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -243,6 +245,15 @@ fun PluviaMain(
         }
     }
 
+    var topMessage by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        SnackbarManager.topMessages.collectLatest { message ->
+            topMessage = message
+            delay(1500)
+            topMessage = null
+        }
+    }
+
     BackHandler(enabled = state.loadingDialogVisible && !PluviaApp.keepAlive) {
         // TODO: Make prelaunch/loading operations cancellable so Back can exit safely.
     }
@@ -372,6 +383,25 @@ fun PluviaMain(
                         onGameLaunchError = { error ->
                             viewModel.onGameLaunchError(error)
                         },
+                    )
+                }
+            }
+
+            topMessage?.let { message ->
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
+                        .padding(top = 16.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shadowElevation = 4.dp,
+                ) {
+                    Text(
+                        text = message,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             }

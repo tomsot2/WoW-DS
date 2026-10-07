@@ -2372,7 +2372,7 @@ fun XServerScreen(
                             updatePhysicalStickAndGetMixedValue(binding, isDown, offset, sourceKeyCode)
                         },
                         onRightStickMouseModeChanged = { mouseMode ->
-                            SnackbarManager.show(
+                            SnackbarManager.showTop(
                                 if (mouseMode) "Right stick: cursor" else "Right stick: camera",
                             )
                         },

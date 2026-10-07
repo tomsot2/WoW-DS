@@ -16,6 +16,16 @@ object SnackbarManager {
             Timber.w("[Snackbar]: Dropping message because the buffer is full")
         }
     }
+
+    // Short-lived message shown at the top of the screen (does not queue behind snackbars).
+    private val _topMessages = Channel<String>(capacity = Channel.BUFFERED)
+    val topMessages = _topMessages.receiveAsFlow()
+
+    fun showTop(message: String) {
+        if (_topMessages.trySend(message).isFailure) {
+            Timber.w("[Snackbar]: Dropping top message because the buffer is full")
+        }
+    }
 }
 
 class SnackbarHostController {
