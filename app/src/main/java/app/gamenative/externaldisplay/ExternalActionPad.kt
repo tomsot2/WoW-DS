@@ -12,7 +12,11 @@ import android.widget.LinearLayout
 import androidx.annotation.DrawableRes
 import android.util.TypedValue
 import android.widget.TextView
+import android.annotation.SuppressLint
+import android.view.MotionEvent
+import android.os.SystemClock
 import com.winlator.widget.TouchpadView
+import com.winlator.winhandler.MouseEventFlags
 import com.winlator.xserver.XKeycode
 import com.winlator.xserver.XServer
 import app.gamenative.R
@@ -38,6 +42,8 @@ class ExternalActionPad(
     private val lockedModifiers = mutableSetOf<XKeycode>()
     private val modifierStyles = mutableMapOf<XKeycode, (Boolean) -> Unit>()
     private val trackpadView: TouchpadView
+    private val trackpadPanel: LinearLayout
+    private val releaseMouseButtons = mutableListOf<() -> Unit>()
 
     init {
         orientation = VERTICAL
@@ -47,7 +53,7 @@ class ExternalActionPad(
             layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         }
         trackpadView = TouchpadView(context, xServer, false).apply {
-            layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT).apply {
+            layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f).apply {
                 val m = (10 * density).toInt()
                 setMargins(m, 0, m, m)
             }
@@ -57,6 +63,22 @@ class ExternalActionPad(
                 setStroke((2 * density).toInt(), theme.border)
             }
             touchpadViewProvider()?.let { setSimTouchScreen(it.isSimTouchScreen) }
+        }
+        trackpadPanel = LinearLayout(context).apply {
+            orientation = VERTICAL
+            layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            addView(trackpadView)
+            addView(
+                LinearLayout(context).apply {
+                    orientation = HORIZONTAL
+                    val m = (10 * density).toInt()
+                    layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (64 * density).toInt()).apply {
+                        setMargins(m, 0, m, m)
+                    }
+                    addView(mouseButton("Left click", MouseEventFlags.LEFTDOWN, MouseEventFlags.LEFTUP))
+                    addView(mouseButton("Right click", MouseEventFlags.RIGHTDOWN, MouseEventFlags.RIGHTUP))
+                },
+            )
             visibility = View.GONE
         }
         keyboardView = ExternalOnScreenKeyboardView(context, xServer).apply {
@@ -65,7 +87,7 @@ class ExternalActionPad(
             visibility = View.GONE
         }
 
-        trackpadButton = circleButton(R.drawable.icon_trackpad, "Trackpad") { setTrackpad(trackpadView.visibility != View.VISIBLE) }
+        trackpadButton = circleButton(R.drawable.icon_trackpad, "Trackpad") { setTrackpad(trackpadPanel.visibility != View.VISIBLE) }
         keyboardButton = circleButton(R.drawable.icon_keyboard, "Keyboard") { setKeyboard(keyboardView.visibility != View.VISIBLE) }
 
         val header = LinearLayout(context).apply {
@@ -83,7 +105,7 @@ class ExternalActionPad(
         val body = FrameLayout(context).apply {
             layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
             addView(padView)
-            addView(trackpadView)
+            addView(trackpadPanel)
             addView(keyboardView)
         }
         addView(header)
@@ -144,6 +166,80 @@ class ExternalActionPad(
         }
     }
 
+    /**
+     * Mouse button under the trackpad. It acts like a real button: finger down presses it, finger up
+     * releases it, so you can hold and drag. Double-tap and it stays pressed after you lift your finger
+     * (lit with a bright outline) until you tap it again.
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun mouseButton(label: String, downFlag: Int, upFlag: Int): TextView {
+        return TextView(context).apply {
+            text = label
+            gravity = Gravity.CENTER
+            setTextColor(theme.text)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            contentDescription = label
+            layoutParams = LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply {
+                val m = (4 * density).toInt()
+                setMargins(m, 0, m, 0)
+            }
+            var pressed = false
+            var locked = false
+            var lockOnRelease = false
+            var ignoreUp = false
+            var lastDownAt = 0L
+
+            fun style() {
+                background = GradientDrawable().apply {
+                    cornerRadius = 12 * density
+                    setColor(if (pressed || locked) theme.pressed else theme.key)
+                    setStroke(((if (locked) 4 else 2) * density).toInt(), if (locked) theme.text else theme.border)
+                }
+            }
+            fun send(flag: Int) = xServer.winHandler.mouseEvent(flag, 0, 0, 0)
+            style()
+            releaseMouseButtons.add {
+                if (pressed || locked) send(upFlag)
+                pressed = false; locked = false; lockOnRelease = false; ignoreUp = false
+                style()
+            }
+            setOnTouchListener { view, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        view.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                        val now = SystemClock.uptimeMillis()
+                        if (locked) {
+                            send(upFlag)
+                            locked = false
+                            pressed = false
+                            ignoreUp = true
+                        } else {
+                            send(downFlag)
+                            pressed = true
+                            lockOnRelease = now - lastDownAt <= DOUBLE_TAP_MS
+                            lastDownAt = now
+                        }
+                        style()
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        when {
+                            ignoreUp -> ignoreUp = false
+                            lockOnRelease && pressed -> {
+                                locked = true
+                                lockOnRelease = false
+                            }
+                            pressed -> send(upFlag)
+                        }
+                        pressed = false
+                        style()
+                    }
+                }
+                true
+            }
+        }
+    }
+
     /** Lets go of every armed modifier. Locked ones stay down. */
     private fun releaseModifiers() {
         heldModifiers.toList().filter { it !in lockedModifiers }.forEach { key ->
@@ -158,6 +254,7 @@ class ExternalActionPad(
         heldModifiers.toList().forEach { xServer.injectKeyRelease(it) }
         heldModifiers.clear()
         lockedModifiers.clear()
+        releaseMouseButtons.forEach { it() }
         super.onDetachedFromWindow()
     }
 
@@ -166,7 +263,8 @@ class ExternalActionPad(
     }
 
     private fun setTrackpad(on: Boolean) {
-        trackpadView.visibility = if (on) View.VISIBLE else View.GONE
+        trackpadPanel.visibility = if (on) View.VISIBLE else View.GONE
+        if (!on) releaseMouseButtons.forEach { it() }
         padView.visibility = if (on) View.GONE else View.VISIBLE
         styleButton(trackpadButton, on)
     }
