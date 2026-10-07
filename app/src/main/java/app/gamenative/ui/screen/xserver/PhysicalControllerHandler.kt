@@ -55,7 +55,7 @@ class PhysicalControllerHandler(
         private const val SEQUENCE_PRESS_MS = 80L
 
         // Cursor-mode right stick: speed multiplier at full deflection (1.0x at the smallest deflection).
-        private const val RIGHT_STICK_MAX_SPEED = 2.0f
+        private const val RIGHT_STICK_MAX_SPEED = 2.5f
 
         // Stick deflection (0..1) at which the speed ramp begins; below this the speed is 1.0x.
         private const val RIGHT_STICK_RAMP_START = 0.90f
