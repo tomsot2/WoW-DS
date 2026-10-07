@@ -10,7 +10,10 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.annotation.DrawableRes
+import android.util.TypedValue
+import android.widget.TextView
 import com.winlator.widget.TouchpadView
+import com.winlator.xserver.XKeycode
 import com.winlator.xserver.XServer
 import app.gamenative.R
 
@@ -21,7 +24,7 @@ import app.gamenative.R
  */
 class ExternalActionPad(
     context: Context,
-    xServer: XServer,
+    private val xServer: XServer,
     private val theme: PadTheme,
     touchpadViewProvider: () -> TouchpadView?,
 ) : LinearLayout(context) {
@@ -31,6 +34,7 @@ class ExternalActionPad(
     private val keyboardButton: ImageButton
     private val keyboardView: ExternalOnScreenKeyboardView
     private val padView: ExternalActionBarView
+    private val heldModifiers = mutableSetOf<XKeycode>()
     private val trackpadView: TouchpadView
 
     init {
@@ -68,6 +72,10 @@ class ExternalActionPad(
             setPadding(m * 2, m, m * 2, m)
             addView(trackpadButton)
             addView(View(context), LayoutParams(0, 1, 1f))
+            addView(modifierButton("Ctrl", XKeycode.KEY_CTRL_L))
+            addView(modifierButton("Shift", XKeycode.KEY_SHIFT_L))
+            addView(modifierButton("Alt", XKeycode.KEY_ALT_L))
+            addView(View(context), LayoutParams(0, 1, 1f))
             addView(keyboardButton)
         }
         val body = FrameLayout(context).apply {
@@ -78,6 +86,48 @@ class ExternalActionPad(
         }
         addView(header)
         addView(body)
+    }
+
+    /** Tap to hold a modifier down, tap again to let go. The lit-up button shows what is held. */
+    private fun modifierButton(label: String, key: XKeycode): TextView {
+        return TextView(context).apply {
+            text = label
+            gravity = Gravity.CENTER
+            setTextColor(theme.text)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            contentDescription = label
+            layoutParams = LayoutParams((72 * density).toInt(), (40 * density).toInt()).apply {
+                val m = (4 * density).toInt()
+                setMargins(m, 0, m, 0)
+            }
+            fun style(active: Boolean) {
+                background = GradientDrawable().apply {
+                    cornerRadius = 12 * density
+                    setColor(if (active) theme.pressed else theme.key)
+                    setStroke((2 * density).toInt(), theme.border)
+                }
+            }
+            style(false)
+            setOnClickListener {
+                performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                if (heldModifiers.remove(key)) {
+                    xServer.injectKeyRelease(key)
+                    style(false)
+                } else {
+                    heldModifiers.add(key)
+                    xServer.injectKeyPress(key)
+                    style(true)
+                }
+            }
+        }
+    }
+
+    /** Never leave a modifier stuck down if the display goes away. */
+    override fun onDetachedFromWindow() {
+        heldModifiers.toList().forEach { xServer.injectKeyRelease(it) }
+        heldModifiers.clear()
+        super.onDetachedFromWindow()
     }
 
     private fun setTrackpad(on: Boolean) {
