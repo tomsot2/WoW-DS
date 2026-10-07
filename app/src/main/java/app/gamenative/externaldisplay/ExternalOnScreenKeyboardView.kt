@@ -1,24 +1,20 @@
 package app.gamenative.externaldisplay
 
 import android.content.Context
-import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
-import androidx.core.content.ContextCompat
 import app.gamenative.R
 import com.winlator.xserver.XKeycode
 import com.winlator.xserver.XServer
-import kotlin.math.roundToInt
 
 class ExternalOnScreenKeyboardView(
     context: Context,
     private val xServer: XServer,
+    private val theme: PadTheme = PadTheme.DEFAULT,
 ) : LinearLayout(context) {
 
     private enum class ShiftState { OFF, ON, CAPS }
@@ -46,18 +42,12 @@ class ExternalOnScreenKeyboardView(
     private var shiftState: ShiftState = ShiftState.OFF
     private var showSymbols = false
 
-    private val keyboardBackgroundColor: Int = ContextCompat.getColor(context, R.color.external_display_keyboard_background)
-    private val keyBackgroundColor: Int = ContextCompat.getColor(context, R.color.external_display_key_background)
-    private val keyHighlightColor: Int = ContextCompat.getColor(context, R.color.external_display_key_highlight_background)
-    private val keyHighlightStrongColor: Int = ContextCompat.getColor(context, R.color.external_display_key_highlight_strong_background)
-    private val keyColor: Int = ContextCompat.getColor(context, R.color.external_display_key_color)
-
     init {
         orientation = VERTICAL
         setMotionEventSplittingEnabled(true)
         val padding = dp(8)
         setPadding(padding, padding, padding, padding)
-        setBackgroundColor(keyboardBackgroundColor)
+        setBackgroundColor(theme.background)
         buildLayout()
         refreshLabels()
     }
@@ -220,9 +210,9 @@ class ExternalOnScreenKeyboardView(
         keys.forEach { spec ->
             val button = Button(context).apply {
                 isAllCaps = false
-                setTextColor(keyColor)
+                setTextColor(theme.text)
                 setTextSize(16f)
-                typeface = Typeface.DEFAULT_BOLD
+                typeface = theme.typeface
                 text = spec.normalLabel
                 background = createKeyBackground(normal = true)
                 setPadding(0, 0, 0, 0)
@@ -358,39 +348,18 @@ class ExternalOnScreenKeyboardView(
         super.onDetachedFromWindow()
     }
 
+    /** Normal keys use the pad's stone face; Shift/Caps use the glowing face, Caps with the bright outline. */
     private fun createKeyBackground(
         normal: Boolean = false,
         highlight: Boolean = false,
         strong: Boolean = false,
     ): StateListDrawable {
-        val radius = dp(8).toFloat()
-        val baseColor = when {
-            highlight && strong -> keyHighlightStrongColor
-            highlight -> keyHighlightColor
-            normal -> keyBackgroundColor
-            else -> keyBackgroundColor
-        }
-
-        val pressedColor = blendColor(baseColor, Color.WHITE, 0.18f)
-
-        fun shape(color: Int): GradientDrawable = GradientDrawable().apply {
-            cornerRadius = radius
-            setColor(color)
-        }
-
+        val density = resources.displayMetrics.density
+        val face = if (highlight) theme.buttonBackground(density, 8f, active = true, emphasized = strong)
+        else theme.buttonBackground(density, 8f, active = false)
         return StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_pressed), shape(pressedColor))
-            addState(intArrayOf(), shape(baseColor))
+            addState(intArrayOf(android.R.attr.state_pressed), theme.buttonBackground(density, 8f, active = true))
+            addState(intArrayOf(), face)
         }
-    }
-
-    private fun blendColor(from: Int, to: Int, ratio: Float): Int {
-        val clamped = ratio.coerceIn(0f, 1f)
-        val inverse = 1f - clamped
-        val a = (Color.alpha(from) * inverse + Color.alpha(to) * clamped).roundToInt()
-        val r = (Color.red(from) * inverse + Color.red(to) * clamped).roundToInt()
-        val g = (Color.green(from) * inverse + Color.green(to) * clamped).roundToInt()
-        val b = (Color.blue(from) * inverse + Color.blue(to) * clamped).roundToInt()
-        return Color.argb(a, r, g, b)
     }
 }
