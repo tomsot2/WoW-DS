@@ -300,6 +300,8 @@ class ExternalActionPad(
     private fun setKeyboard(on: Boolean) {
         if (on) setTrackpad(false)
         keyboardView.visibility = if (on) View.VISIBLE else View.GONE
+        // With the keyboard up, the space above it is left blank (just the pad background).
+        padView.visibility = if (on) View.GONE else View.VISIBLE
         styleButton(keyboardButton, on)
     }
 
