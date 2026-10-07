@@ -48,6 +48,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private float scrollAccumY;
     private boolean scrolling;
     private float sensitivity;
+    private float cursorAcceleration = CURSOR_ACCELERATION;
     private final XServer xServer;
     private final float[] xform;
     private boolean simTouchScreen = false;
@@ -331,13 +332,13 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
         public int deltaX() {
             float dx = (this.x - this.lastX) * TouchpadView.this.sensitivity;
-            if (Math.abs(dx) > CURSOR_ACCELERATION_THRESHOLD) dx *= CURSOR_ACCELERATION;
+            if (Math.abs(dx) > CURSOR_ACCELERATION_THRESHOLD) dx *= TouchpadView.this.cursorAcceleration;
             return Mathf.roundPoint(dx);
         }
 
         public int deltaY() {
             float dy = (this.y - this.lastY) * TouchpadView.this.sensitivity;
-            if (Math.abs(dy) > CURSOR_ACCELERATION_THRESHOLD) dy *= CURSOR_ACCELERATION;
+            if (Math.abs(dy) > CURSOR_ACCELERATION_THRESHOLD) dy *= TouchpadView.this.cursorAcceleration;
             return Mathf.roundPoint(dy);
         }
 
@@ -2213,6 +2214,11 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 fingerPointerButtonRight = null;
             }, 30);
         }
+    }
+
+    /** Boost applied to fast finger movement. 1.0 turns the acceleration off. */
+    public void setCursorAcceleration(float cursorAcceleration) {
+        this.cursorAcceleration = cursorAcceleration;
     }
 
     public void setSensitivity(float sensitivity) {

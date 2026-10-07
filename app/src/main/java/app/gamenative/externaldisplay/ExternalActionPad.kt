@@ -17,6 +17,7 @@ import android.view.MotionEvent
 import android.os.SystemClock
 import com.winlator.widget.TouchpadView
 import com.winlator.winhandler.MouseEventFlags
+import com.winlator.xserver.Pointer
 import com.winlator.xserver.XKeycode
 import com.winlator.xserver.XServer
 import app.gamenative.R
@@ -63,6 +64,9 @@ class ExternalActionPad(
                 setStroke((2 * density).toInt(), theme.border)
             }
             touchpadViewProvider()?.let { setSimTouchScreen(it.isSimTouchScreen) }
+            // Slower, steadier cursor for precise aiming: no speed-up on fast swipes, and a lower base speed.
+            setCursorAcceleration(TRACKPAD_ACCELERATION)
+            setSensitivity(TRACKPAD_SENSITIVITY)
         }
         trackpadPanel = LinearLayout(context).apply {
             orientation = VERTICAL
@@ -75,8 +79,8 @@ class ExternalActionPad(
                     layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (64 * density).toInt()).apply {
                         setMargins(m, 0, m, m)
                     }
-                    addView(mouseButton("Left click", MouseEventFlags.LEFTDOWN, MouseEventFlags.LEFTUP))
-                    addView(mouseButton("Right click", MouseEventFlags.RIGHTDOWN, MouseEventFlags.RIGHTUP))
+                    addView(mouseButton("Left click", Pointer.Button.BUTTON_LEFT, MouseEventFlags.LEFTDOWN, MouseEventFlags.LEFTUP))
+                    addView(mouseButton("Right click", Pointer.Button.BUTTON_RIGHT, MouseEventFlags.RIGHTDOWN, MouseEventFlags.RIGHTUP))
                 },
             )
             visibility = View.GONE
@@ -178,7 +182,7 @@ class ExternalActionPad(
      * (lit with a bright outline) until you tap it again.
      */
     @SuppressLint("ClickableViewAccessibility")
-    private fun mouseButton(label: String, downFlag: Int, upFlag: Int): TextView {
+    private fun mouseButton(label: String, button: Pointer.Button, downFlag: Int, upFlag: Int): TextView {
         return TextView(context).apply {
             text = label
             gravity = Gravity.CENTER
@@ -203,10 +207,19 @@ class ExternalActionPad(
                     setStroke(((if (locked) 4 else 2) * density).toInt(), if (locked) theme.text else theme.border)
                 }
             }
-            fun send(flag: Int) = xServer.winHandler.mouseEvent(flag, 0, 0, 0)
+            // Same two paths the trackpad itself uses: the Wine mouse in relative mode, X pointer buttons otherwise.
+            fun send(down: Boolean) {
+                if (xServer.isRelativeMouseMovement()) {
+                    xServer.getWinHandler().mouseEvent(if (down) downFlag else upFlag, 0, 0, 0)
+                } else if (down) {
+                    xServer.injectPointerButtonPress(button)
+                } else {
+                    xServer.injectPointerButtonRelease(button)
+                }
+            }
             style()
             releaseMouseButtons.add {
-                if (pressed || locked) send(upFlag)
+                if (pressed || locked) send(false)
                 pressed = false; locked = false; lockOnRelease = false; ignoreUp = false
                 style()
             }
@@ -216,12 +229,12 @@ class ExternalActionPad(
                         view.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
                         val now = SystemClock.uptimeMillis()
                         if (locked) {
-                            send(upFlag)
+                            send(false)
                             locked = false
                             pressed = false
                             ignoreUp = true
                         } else {
-                            send(downFlag)
+                            send(true)
                             pressed = true
                             lockOnRelease = now - lastDownAt <= DOUBLE_TAP_MS
                             lastDownAt = now
@@ -235,7 +248,7 @@ class ExternalActionPad(
                                 locked = true
                                 lockOnRelease = false
                             }
-                            pressed -> send(upFlag)
+                            pressed -> send(false)
                         }
                         pressed = false
                         style()
@@ -266,6 +279,10 @@ class ExternalActionPad(
 
     private companion object {
         const val DOUBLE_TAP_MS = 350L
+
+        // Trackpad feel. Lower sensitivity = slower, more precise. Acceleration 1.0 = none.
+        const val TRACKPAD_SENSITIVITY = 0.6f
+        const val TRACKPAD_ACCELERATION = 1.0f
     }
 
     private fun setTrackpad(on: Boolean) {
