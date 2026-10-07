@@ -2372,11 +2372,9 @@ fun XServerScreen(
                             updatePhysicalStickAndGetMixedValue(binding, isDown, offset, sourceKeyCode)
                         },
                         onRightStickMouseModeChanged = { mouseMode ->
-                            android.widget.Toast.makeText(
-                                xServerView.context,
+                            SnackbarManager.show(
                                 if (mouseMode) "Right stick: cursor" else "Right stick: camera",
-                                android.widget.Toast.LENGTH_SHORT,
-                            ).show()
+                            )
                         },
                     )
                     radialMenuCoordinator?.bindPhysicalControllerHandler(physicalControllerHandler)
