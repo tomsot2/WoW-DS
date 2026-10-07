@@ -47,11 +47,11 @@ class ExternalActionBarView(
         setPadding(pad, pad, pad, pad)
 
         val leftColumn = column(LEFT_WEIGHT).apply {
-            PANELS.forEach { addView(keyRow(listOf(it), textSp = 15f, weight = 1f)) }
+            PANELS.forEach { addView(keyRow(listOf(it), textSp = 15f, weight = 1f, muted = true)) }
         }
         rightColumn = column(RIGHT_WEIGHT).apply {
             ACTION_SLOTS.chunked(3).forEach { addView(keyRow(it, textSp = 26f, weight = 1f)) }
-            FUNCTION_KEYS.chunked(6).forEach { addView(keyRow(it, textSp = 13f, weight = 0.6f)) }
+            FUNCTION_KEYS.chunked(6).forEach { addView(keyRow(it, textSp = 13f, weight = 0.6f, muted = true)) }
         }
         addView(leftColumn)
         addView(rightColumn)
@@ -70,18 +70,19 @@ class ExternalActionBarView(
         layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, weight)
     }
 
-    private fun keyRow(slots: List<Slot>, textSp: Float, weight: Float): LinearLayout {
+    /** [muted] dims the button trim; the action buttons (1-9, 0, -, =) are left at full strength. */
+    private fun keyRow(slots: List<Slot>, textSp: Float, weight: Float, muted: Boolean = false): LinearLayout {
         return LinearLayout(context).apply {
             orientation = HORIZONTAL
             isMotionEventSplittingEnabled = true
             // Rows share the column's height by weight, so everything always fits.
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, weight)
-            slots.forEach { addView(createButton(it, textSp)) }
+            slots.forEach { addView(createButton(it, textSp, muted)) }
         }
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun createButton(slot: Slot, textSp: Float): View {
+    private fun createButton(slot: Slot, textSp: Float, muted: Boolean): View {
         return TextView(context).apply {
             text = slot.label
             contentDescription = slot.label
@@ -90,7 +91,7 @@ class ExternalActionBarView(
             setTextSize(TypedValue.COMPLEX_UNIT_SP, textSp)
             typeface = theme.typeface
             maxLines = 1
-            background = createKeyBackground()
+            background = createKeyBackground(muted)
             layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply {
                 val margin = dp(3)
                 setMargins(margin, margin, margin, margin)
@@ -123,7 +124,7 @@ class ExternalActionBarView(
         onKeyTapped()
     }
 
-    private fun createKeyBackground() = theme.buttonStates(resources.displayMetrics.density, 10f)
+    private fun createKeyBackground(muted: Boolean) = theme.buttonStates(resources.displayMetrics.density, 10f, muted)
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 

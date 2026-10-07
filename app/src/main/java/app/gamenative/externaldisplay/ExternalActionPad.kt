@@ -138,7 +138,7 @@ class ExternalActionPad(
             }
             fun style(active: Boolean) {
                 val locked = key in lockedModifiers
-                background = theme.buttonBackground(density, 12f, active, emphasized = locked)
+                background = theme.buttonBackground(density, 12f, active, emphasized = locked, muted = true)
                 setTextColor(if (active) theme.textPressed else theme.text)
             }
             style(false)
@@ -324,7 +324,7 @@ class ExternalActionPad(
     }
 
     private fun styleButton(button: ImageButton, active: Boolean) {
-        button.background = theme.buttonBackground(density, 12f, active)
+        button.background = theme.buttonBackground(density, 12f, active, muted = true)
         button.setColorFilter(if (active) theme.textPressed else theme.text)
     }
 }
