@@ -49,7 +49,7 @@ class ExternalActionBarView(context: Context, private val xServer: XServer) : Li
             val row = LinearLayout(context).apply {
                 orientation = HORIZONTAL
                 isMotionEventSplittingEnabled = true
-                layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, dp(ROW_HEIGHT_DP))
+                layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f)
             }
             rowSlots.forEach { slot -> row.addView(createButton(slot)) }
             addView(row)
@@ -119,8 +119,7 @@ class ExternalActionBarView(context: Context, private val xServer: XServer) : Li
     }
 
     private companion object {
-        const val COLUMNS = 6
-        const val ROW_HEIGHT_DP = 110
+        const val COLUMNS = 3
 
         // WoW's default bindings for Action Bar 1, slots 1 to 12.
         val SLOTS = listOf(
