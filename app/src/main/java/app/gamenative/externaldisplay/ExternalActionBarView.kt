@@ -24,7 +24,13 @@ import com.winlator.xserver.XServer
  * One touch is exactly one key press and one key release. There are no macros, sequences or timed
  * repeats here: anything multi-step belongs in WoW's own macro system.
  */
-class ExternalActionBarView(context: Context, private val xServer: XServer, private val theme: PadTheme) : LinearLayout(context) {
+class ExternalActionBarView(
+    context: Context,
+    private val xServer: XServer,
+    private val theme: PadTheme,
+    /** Called after a button's key has been released, e.g. so one-shot modifiers can let go. */
+    private val onKeyTapped: () -> Unit = {},
+) : LinearLayout(context) {
 
     private data class Slot(val label: String, val key: XKeycode)
 
@@ -94,6 +100,7 @@ class ExternalActionBarView(context: Context, private val xServer: XServer, priv
     private fun releaseKey(key: XKeycode) {
         if (!downKeys.remove(key)) return
         xServer.injectKeyRelease(key)
+        onKeyTapped()
     }
 
     private fun createKeyBackground(): StateListDrawable {

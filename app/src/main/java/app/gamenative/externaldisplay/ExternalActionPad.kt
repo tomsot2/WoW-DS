@@ -35,13 +35,14 @@ class ExternalActionPad(
     private val keyboardView: ExternalOnScreenKeyboardView
     private val padView: ExternalActionBarView
     private val heldModifiers = mutableSetOf<XKeycode>()
+    private val modifierStyles = mutableMapOf<XKeycode, (Boolean) -> Unit>()
     private val trackpadView: TouchpadView
 
     init {
         orientation = VERTICAL
         setBackgroundColor(theme.background)
 
-        padView = ExternalActionBarView(context, xServer, theme).apply {
+        padView = ExternalActionBarView(context, xServer, theme, onKeyTapped = { releaseModifiers() }).apply {
             layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         }
         trackpadView = TouchpadView(context, xServer, false).apply {
@@ -88,7 +89,10 @@ class ExternalActionPad(
         addView(body)
     }
 
-    /** Tap to hold a modifier down, tap again to let go. The lit-up button shows what is held. */
+    /**
+     * One-shot modifier: tap to arm it (lit up), and it lets go by itself right after the next button
+     * (1-9, 0, -, =) is pressed. Tap it again to cancel.
+     */
     private fun modifierButton(label: String, key: XKeycode): TextView {
         return TextView(context).apply {
             text = label
@@ -109,6 +113,7 @@ class ExternalActionPad(
                 }
             }
             style(false)
+            modifierStyles[key] = { active -> style(active) }
             setOnClickListener {
                 performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
                 if (heldModifiers.remove(key)) {
@@ -121,6 +126,14 @@ class ExternalActionPad(
                 }
             }
         }
+    }
+
+    private fun releaseModifiers() {
+        heldModifiers.toList().forEach { key ->
+            xServer.injectKeyRelease(key)
+            modifierStyles[key]?.invoke(false)
+        }
+        heldModifiers.clear()
     }
 
     /** Never leave a modifier stuck down if the display goes away. */
