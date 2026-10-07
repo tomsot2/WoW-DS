@@ -56,6 +56,9 @@ class PhysicalControllerHandler(
 
         // Cursor-mode right stick: speed multiplier at full deflection (1.0x at the smallest deflection).
         private const val RIGHT_STICK_MAX_SPEED = 2.0f
+
+        // Stick deflection (0..1) at which the speed ramp begins; below this the speed is 1.0x.
+        private const val RIGHT_STICK_RAMP_START = 0.75f
     }
 
     private val TAG = "gncontrol"
@@ -441,10 +444,9 @@ class PhysicalControllerHandler(
         if (Math.abs(value) > ControlElement.STICK_DEAD_ZONE) {
             val active = if (value > 0f) positiveBinding else negativeBinding
             val inactive = if (value > 0f) negativeBinding else positiveBinding
-            // Speed ramps from 1.0x at the smallest deflection up to RIGHT_STICK_MAX_SPEED at full tilt,
-            // slowly at first and faster near the end (squared curve).
-            val deadZone = ControlElement.STICK_DEAD_ZONE
-            val tilt = ((Math.abs(value) - deadZone) / (1f - deadZone)).coerceIn(0f, 1f)
+            // Speed stays 1.0x until RIGHT_STICK_RAMP_START of the stick travel, then ramps up to
+            // RIGHT_STICK_MAX_SPEED at full tilt, slowly at first and faster near the end (squared curve).
+            val tilt = ((Math.abs(value) - RIGHT_STICK_RAMP_START) / (1f - RIGHT_STICK_RAMP_START)).coerceIn(0f, 1f)
             val scaled = value * (1f + (RIGHT_STICK_MAX_SPEED - 1f) * tilt * tilt)
             updateMouseMoveContribution(inactive, false, 0f, if (value > 0f) negKey else posKey, deviceId)
             updateMouseMoveContribution(active, true, scaled, if (value > 0f) posKey else negKey, deviceId)
