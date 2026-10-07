@@ -973,6 +973,11 @@ private fun prepareLaunch(context: Context, gameRoot: File, gpu: GpuProfile, onS
     }
     val container = checkNotNull(containerManager.getContainerById(CONTAINER_ID)) { "Container creation failed. Check system storage and logs." }
     container.putExtra("splitTopHeight", split?.topHeight)
+    // Second display (if any) shows the 12-button action bar pad. With the experimental dual-screen
+    // split on, the second display is already used for the game, so the pad stays off.
+    container.setExternalDisplayMode(
+        if (split == null) Container.EXTERNAL_DISPLAY_MODE_BUTTONS else Container.EXTERNAL_DISPLAY_MODE_OFF,
+    )
     container.saveData()
     return CONTAINER_ID
 }

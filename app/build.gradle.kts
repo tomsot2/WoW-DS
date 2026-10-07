@@ -27,6 +27,18 @@ android {
     ndkVersion = "27.3.13750724"
 
     signingConfigs {
+        // A fixed debug key (tools/ci-debug.keystore). CI runners are fresh machines, so without this
+        // every build would get a different signature and Android would refuse to update the app
+        // in place. Personal/private builds only; never ship an app signed with this key.
+        getByName("debug") {
+            val ciDebugKeystore = rootProject.file("tools/ci-debug.keystore")
+            if (ciDebugKeystore.exists()) {
+                storeFile = ciDebugKeystore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
         create("release") {
             if (keystoreProperties != null) {
                 storeFile = file(keystoreProperties["storeFile"].toString())
