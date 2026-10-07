@@ -67,7 +67,7 @@ import timber.log.Timber
 import java.io.File
 
 object WoWLauncherState {
-    var shouldAutoLaunch = true
+    var shouldAutoLaunch = false
 }
 
 private const val CONTAINER_ID = "wow_forever"
