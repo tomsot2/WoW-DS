@@ -93,9 +93,8 @@ class ExternalActionPad(
         val header = LinearLayout(context).apply {
             orientation = HORIZONTAL
             val m = (6 * density).toInt()
-            setPadding(m * 2, m, m * 2, m)
+            setPadding((8 * density).toInt(), m, (8 * density).toInt(), m)
             addView(trackpadButton)
-            addView(View(context), LayoutParams(0, 1, 1f))
             addView(keyboardButton)
         }
         // Modifier buttons sit under the action buttons on the pad.
@@ -283,8 +282,11 @@ class ExternalActionPad(
 
     private fun circleButton(@DrawableRes icon: Int, label: String, onClick: () -> Unit): ImageButton {
         return ImageButton(context).apply {
-            val size = (40 * density).toInt()
-            layoutParams = LayoutParams(size, size)
+            // The two header buttons split the full width between them.
+            layoutParams = LayoutParams(0, (44 * density).toInt(), 1f).apply {
+                val m = (3 * density).toInt()
+                setMargins(m, 0, m, 0)
+            }
             setImageResource(icon)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             val pad = (8 * density).toInt()
@@ -297,7 +299,7 @@ class ExternalActionPad(
 
     private fun styleButton(button: ImageButton, active: Boolean) {
         button.background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
+            cornerRadius = 12 * density
             setColor(if (active) theme.pressed else theme.key)
             setStroke((2 * density).toInt(), theme.border)
         }
