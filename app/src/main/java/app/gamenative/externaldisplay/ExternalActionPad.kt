@@ -44,6 +44,7 @@ class ExternalActionPad(
     private val modifierStyles = mutableMapOf<XKeycode, (Boolean) -> Unit>()
     private val trackpadView: TouchpadView
     private val trackpadPanel: LinearLayout
+    private val modifierRow: LinearLayout
     private val releaseMouseButtons = mutableListOf<() -> Unit>()
 
     init {
@@ -101,17 +102,16 @@ class ExternalActionPad(
             addView(trackpadButton)
             addView(keyboardButton)
         }
-        // Modifier buttons sit under the action buttons on the pad.
-        padView.setModifierRow(
-            LinearLayout(context).apply {
-                orientation = HORIZONTAL
-                val m = (3 * density).toInt()
-                setPadding(0, m, 0, 0)
-                addView(modifierButton("Shift", XKeycode.KEY_SHIFT_L))
-                addView(modifierButton("Ctrl", XKeycode.KEY_CTRL_L))
-                addView(modifierButton("Alt", XKeycode.KEY_ALT_L))
-            },
-        )
+        // One set of modifier buttons: under the action buttons on the pad, above the click buttons on the trackpad.
+        modifierRow = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            val m = (3 * density).toInt()
+            setPadding(0, m, 0, 0)
+            addView(modifierButton("Shift", XKeycode.KEY_SHIFT_L))
+            addView(modifierButton("Ctrl", XKeycode.KEY_CTRL_L))
+            addView(modifierButton("Alt", XKeycode.KEY_ALT_L))
+        }
+        padView.setModifierRow(modifierRow)
         val body = FrameLayout(context).apply {
             layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
             addView(padView)
@@ -248,7 +248,10 @@ class ExternalActionPad(
                                 locked = true
                                 lockOnRelease = false
                             }
-                            pressed -> send(false)
+                            pressed -> {
+                                send(false)
+                                releaseModifiers()
+                            }
                         }
                         pressed = false
                         style()
@@ -285,14 +288,28 @@ class ExternalActionPad(
         const val TRACKPAD_ACCELERATION = 1.0f
     }
 
+    /** Trackpad and keyboard are mutually exclusive: opening one closes the other. */
     private fun setTrackpad(on: Boolean) {
+        if (on) setKeyboard(false)
         trackpadPanel.visibility = if (on) View.VISIBLE else View.GONE
         if (!on) releaseMouseButtons.forEach { it() }
         padView.visibility = if (on) View.GONE else View.VISIBLE
+        // The modifiers follow whichever view is showing.
+        (modifierRow.parent as? ViewGroup)?.removeView(modifierRow)
+        if (on) {
+            val m = (10 * density).toInt()
+            modifierRow.layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (44 * density).toInt()).apply {
+                setMargins(m, 0, m, 0)
+            }
+            trackpadPanel.addView(modifierRow, 1)
+        } else {
+            padView.setModifierRow(modifierRow)
+        }
         styleButton(trackpadButton, on)
     }
 
     private fun setKeyboard(on: Boolean) {
+        if (on) setTrackpad(false)
         keyboardView.visibility = if (on) View.VISIBLE else View.GONE
         styleButton(keyboardButton, on)
     }

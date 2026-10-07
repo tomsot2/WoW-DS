@@ -61,6 +61,7 @@ class ExternalActionBarView(
 
     /** Puts the modifier buttons under the action buttons. */
     fun setModifierRow(row: View) {
+        (row.parent as? android.view.ViewGroup)?.removeView(row)
         row.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 0.7f)
         rightColumn.addView(row)
     }
