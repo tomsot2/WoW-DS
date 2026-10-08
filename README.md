@@ -1,4 +1,7 @@
-# WoW Forever for Android
+# AYN Thor WoW Launcher
+
+> **A fork of [WoW Forever for Android](https://github.com/jaredgei/wow-forever-android) by [jaredgei](https://github.com/jaredgei).** The WoW launcher, the single-container setup, native ARM64 launch and the bundled runtime all come from jaredgei's project, which is itself a fork of GameNative. This fork adds Retail and Classic support, a styled launcher, a second-screen button pad with settings, controller cursor mode and a themed in-game menu for the AYN Thor. Please star and support the original.
+
 
 Play the **World of Warcraft: Forever beta** on Snapdragon Android handhelds as a normal Android app. You tap the icon, press Play, and the game runs.
 
@@ -32,7 +35,7 @@ Requirements:
 
 ### 1. Install the app
 
-Download `WoW-Forever.apk` from the [latest release](https://github.com/jaredgei/wow-forever-android/releases/latest) and install it on your device. The app's package name is `app.wowforever`, so it can sit alongside GameNative or Winlator.
+Download the APK from the latest successful run under this repo's **Actions** tab (Artifacts), or get jaredgei's original build from the [original project's releases](https://github.com/jaredgei/wow-forever-android/releases/latest), and install it on your device. The app's package name is `app.wowforever`, so it can sit alongside GameNative or Winlator.
 
 ### 2. Copy your WoW game data to the device (one-time setup)
 
@@ -123,6 +126,8 @@ Release builds are signed with `app/keystores/keystore.properties` when it exist
 
 This project packages other people's work into a single-purpose app. None of it would exist without:
 
+- **[jaredgei/wow-forever-android](https://github.com/jaredgei/wow-forever-android)** by **jaredgei**. This repo is a fork of it. The WoW launcher screen, the pre-configured container, native ARM64 launch, the Battle.net client downloader, the bundled runtime components and most of the Thor fixes described below were done there. Thank you.
+
 - **[GameNative](https://github.com/utkarshdalal/GameNative)** by Utkarsh Dalal and contributors (GPL-3.0). The Android app, the Wine container management and the X server are all GameNative, based on v1.2.1. GameNative in turn builds on **[Pluvia](https://github.com/oxters168/Pluvia)**, **[Winlator](https://github.com/brunodev85/winlator)**, **[Winlator Cmod](https://github.com/coffincolors/winlator)** and the **[Bionic Vulkan wrapper](https://github.com/leegao/bionic-vulkan-wrapper)**.
 - **The WoW Forever RP6 community bundle**, which first got the beta running on a Retroid Pocket 6 in GameNative and supplied the three custom runtime components:
   - **Proton 11 ARM64EC** built from [The412Banner/proton-wine](https://github.com/The412Banner/proton-wine/tree/e5fa703ed7f7329e20d7ede481ab185cf8b1a8b2) with an ARM64 copied-syscall fix and an NLS fallback allocation patch.
@@ -134,7 +139,14 @@ This project packages other people's work into a single-purpose app. None of it 
 
 Full third-party license details are in [`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTICES).
 
-### What this fork changes from GameNative
+### What this fork adds on top of WoW Forever for Android
+
+- Forever, Retail and Classic selectable from the launcher, each with its own game folder and in-app updates.
+- A stone-and-gold launcher theme and quick menu, and the selected flavor named on the Play button and boot screen.
+- Second-screen button pad with a settings page: grouped buttons, window shortcuts, modifier and F-key options, remapping, profiles, and trackpad and stick tuning.
+- Right-stick cursor mode on R3 with A/B clicks and a speed ramp.
+
+### What WoW Forever for Android changes from GameNative
 
 GameNative is a general game library with Steam, GOG, Epic, Amazon, EA and Rockstar stores, mod management, VR support and per-game container settings. This fork turns it into a launcher for one pre-configured container:
 
