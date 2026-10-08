@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.xserver
 
+import app.gamenative.externaldisplay.PadSettings
 import android.graphics.PointF
 import android.os.Handler
 import android.os.Looper
@@ -53,12 +54,6 @@ class PhysicalControllerHandler(
         private const val SCROLL_REPEAT_INTERVAL_MS = 90L
         private const val UNKNOWN_DEVICE_ID = -1
         private const val SEQUENCE_PRESS_MS = 80L
-
-        // Cursor-mode right stick: speed multiplier at full deflection (1.0x at the smallest deflection).
-        private const val RIGHT_STICK_MAX_SPEED = 2.5f
-
-        // Stick deflection (0..1) at which the speed ramp begins; below this the speed is 1.0x.
-        private const val RIGHT_STICK_RAMP_START = 0.90f
     }
 
     private val TAG = "gncontrol"
@@ -216,13 +211,14 @@ class PhysicalControllerHandler(
                         click.pointerButton?.let { xServer?.injectPointerButtonRelease(it) }
                         return true
                     }
-                } else if (event.action == KeyEvent.ACTION_DOWN && rightStickMouseMode) {
-                    // Cursor mode: the pad's A / B buttons act as left / right click.
+                } else if (event.action == KeyEvent.ACTION_DOWN && rightStickMouseMode && PadSettings.int(PadSettings.AB_MODE) != 0) {
+                    // Cursor mode: the pad's A / B buttons act as left / right click (or swapped, per the setting).
+                    val swapped = PadSettings.int(PadSettings.AB_MODE) == 2
                     val bindings = controller.getControllerBinding(keyCode)?.bindingCombo?.bindings
                     val click = when {
                         bindings == null -> null
-                        Binding.GAMEPAD_BUTTON_A in bindings -> Binding.MOUSE_LEFT_BUTTON
-                        Binding.GAMEPAD_BUTTON_B in bindings -> Binding.MOUSE_RIGHT_BUTTON
+                        Binding.GAMEPAD_BUTTON_A in bindings -> if (swapped) Binding.MOUSE_RIGHT_BUTTON else Binding.MOUSE_LEFT_BUTTON
+                        Binding.GAMEPAD_BUTTON_B in bindings -> if (swapped) Binding.MOUSE_LEFT_BUTTON else Binding.MOUSE_RIGHT_BUTTON
                         else -> null
                     }
                     if (click != null) {
@@ -441,13 +437,15 @@ class PhysicalControllerHandler(
         val horizontal = axis == MotionEvent.AXIS_Z
         val positiveBinding = if (horizontal) Binding.MOUSE_MOVE_RIGHT else Binding.MOUSE_MOVE_DOWN
         val negativeBinding = if (horizontal) Binding.MOUSE_MOVE_LEFT else Binding.MOUSE_MOVE_UP
-        if (Math.abs(value) > ControlElement.STICK_DEAD_ZONE) {
+        if (Math.abs(value) > PadSettings.stickDeadzone) {
             val active = if (value > 0f) positiveBinding else negativeBinding
             val inactive = if (value > 0f) negativeBinding else positiveBinding
-            // Speed stays 1.0x until RIGHT_STICK_RAMP_START of the stick travel, then ramps up to
-            // RIGHT_STICK_MAX_SPEED at full tilt, slowly at first and faster near the end (squared curve).
-            val tilt = ((Math.abs(value) - RIGHT_STICK_RAMP_START) / (1f - RIGHT_STICK_RAMP_START)).coerceIn(0f, 1f)
-            val scaled = value * (1f + (RIGHT_STICK_MAX_SPEED - 1f) * tilt * tilt)
+            // Speed stays at the base speed until the ramp start (a setting), then ramps up to the max speed
+            // at full tilt, slowly at first and faster near the end (squared curve).
+            val rampStart = PadSettings.stickRampStart
+            val tilt = ((Math.abs(value) - rampStart) / (1f - rampStart)).coerceIn(0f, 1f)
+            val base = PadSettings.stickBaseSpeed
+            val scaled = value * (base + (PadSettings.stickMaxSpeed - base) * tilt * tilt)
             updateMouseMoveContribution(inactive, false, 0f, if (value > 0f) negKey else posKey, deviceId)
             updateMouseMoveContribution(active, true, scaled, if (value > 0f) posKey else negKey, deviceId)
         } else {
@@ -615,7 +613,7 @@ class PhysicalControllerHandler(
             val positiveSource = PhysicalInputSource(deviceId, posKeyCode)
             val negativeSource = PhysicalInputSource(deviceId, negKeyCode)
 
-            if (Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE) {
+            if (Math.abs(values[i]) > PadSettings.stickDeadzone) {
                 val activeKey = ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i]))
                 val oppositeKey = if (activeKey == posKeyCode) negKeyCode else posKeyCode
                 val activeSource = if (activeKey == posKeyCode) positiveSource else negativeSource
@@ -1189,8 +1187,8 @@ class PhysicalControllerHandler(
     ): Pair<Float, Float>? {
         val filteredX = radialSelectionComponent(x, xAxis)
         val filteredY = radialSelectionComponent(y, yAxis)
-        return if (Math.abs(filteredX) <= ControlElement.STICK_DEAD_ZONE &&
-            Math.abs(filteredY) <= ControlElement.STICK_DEAD_ZONE
+        return if (Math.abs(filteredX) <= PadSettings.stickDeadzone &&
+            Math.abs(filteredY) <= PadSettings.stickDeadzone
         ) {
             null
         } else {
@@ -1199,7 +1197,7 @@ class PhysicalControllerHandler(
     }
 
     private fun radialSelectionComponent(value: Float, axis: Int): Float {
-        if (Math.abs(value) <= ControlElement.STICK_DEAD_ZONE) return 0f
+        if (Math.abs(value) <= PadSettings.stickDeadzone) return 0f
         val keyCode = ExternalControllerBinding.getKeyCodeForAxis(axis, Mathf.sign(value))
         return if (keyCode == radialMenuOpenerKeyCode) 0f else value
     }
@@ -1223,7 +1221,7 @@ class PhysicalControllerHandler(
         )
 
         for (i in axes.indices) {
-            if (Math.abs(values[i]) <= ControlElement.STICK_DEAD_ZONE) continue
+            if (Math.abs(values[i]) <= PadSettings.stickDeadzone) continue
             val keyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i]))
             if (keyCode == radialMenuOpenerKeyCode) {
                 return true

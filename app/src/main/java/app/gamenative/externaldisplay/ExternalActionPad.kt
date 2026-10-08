@@ -20,6 +20,7 @@ import com.winlator.xserver.Pointer
 import com.winlator.xserver.XKeycode
 import com.winlator.xserver.XServer
 import app.gamenative.R
+import app.gamenative.data.TouchGestureConfig
 
 /**
  * Whole second-screen UI: a slim header with a trackpad button (left) and a keyboard button (right),
@@ -34,21 +35,40 @@ class ExternalActionPad(
 ) : LinearLayout(context) {
 
     private val density = resources.displayMetrics.density
-    private val trackpadButton: ImageButton
-    private val keyboardButton: ImageButton
-    private val keyboardView: ExternalOnScreenKeyboardView
-    private val padView: ExternalActionBarView
+    private lateinit var trackpadButton: ImageButton
+    private lateinit var keyboardButton: ImageButton
+    private lateinit var settingsButton: ImageButton
+    private lateinit var settingsView: ExternalPadSettingsView
+    private lateinit var keyboardView: ExternalOnScreenKeyboardView
+    private lateinit var padView: ExternalActionBarView
+    private var settingsOpen = false
+    private var settingsVersion = 0
     private val heldModifiers = mutableSetOf<XKeycode>()
     private val lockedModifiers = mutableSetOf<XKeycode>()
     private val modifierStyles = mutableMapOf<XKeycode, (Boolean) -> Unit>()
-    private val trackpadView: TouchpadView
-    private val trackpadPanel: LinearLayout
-    private val modifierRow: LinearLayout
+    private lateinit var trackpadView: TouchpadView
+    private lateinit var trackpadPanel: LinearLayout
+    private lateinit var modifierRow: LinearLayout
     private val releaseMouseButtons = mutableListOf<() -> Unit>()
 
     init {
+        PadSettings.init(context)
         orientation = VERTICAL
         setBackgroundColor(theme.background)
+        buildUi()
+    }
+
+    /** Builds (or rebuilds, after settings changed) everything below the pad background. */
+    private fun buildUi() {
+        removeAllViews()
+        // Let go of anything still held (including locked modifiers) before the old buttons are dropped.
+        heldModifiers.toList().forEach { xServer.injectKeyRelease(it) }
+        releaseMouseButtons.forEach { it() }
+        heldModifiers.clear()
+        lockedModifiers.clear()
+        modifierStyles.clear()
+        releaseMouseButtons.clear()
+        settingsOpen = false
 
         padView = ExternalActionBarView(context, xServer, theme, onKeyTapped = { releaseModifiers() }).apply {
             layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -61,9 +81,12 @@ class ExternalActionPad(
             background = theme.buttonBackground(density, 16f, active = false)
             touchpadViewProvider()?.let { setSimTouchScreen(it.isSimTouchScreen) }
             // Slower, steadier cursor for precise aiming: no speed-up on fast swipes, and a lower base speed.
-            setCursorAcceleration(TRACKPAD_ACCELERATION)
-            setSensitivity(TRACKPAD_SENSITIVITY)
+            setCursorAcceleration(PadSettings.trackpadAcceleration)
+            setSensitivity(PadSettings.trackpadSensitivity)
             setPrecisionCursor(true)
+            if (!PadSettings.bool(PadSettings.TP_TAP)) {
+                setGestureConfig(TouchGestureConfig().copy(tapEnabled = false))
+            }
         }
         trackpadPanel = LinearLayout(context).apply {
             orientation = VERTICAL
@@ -90,6 +113,11 @@ class ExternalActionPad(
 
         trackpadButton = circleButton(R.drawable.icon_trackpad, "Trackpad") { setTrackpad(trackpadPanel.visibility != View.VISIBLE) }
         keyboardButton = circleButton(R.drawable.icon_keyboard, "Keyboard") { setKeyboard(keyboardView.visibility != View.VISIBLE) }
+        settingsButton = circleButton(R.drawable.icon_settings, "Settings") { setSettings(!settingsOpen) }
+        settingsView = ExternalPadSettingsView(context, theme).apply {
+            layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            visibility = View.GONE
+        }
 
         val header = LinearLayout(context).apply {
             orientation = HORIZONTAL
@@ -102,6 +130,7 @@ class ExternalActionPad(
             val inset = (4 * density).toInt()
             setPadding(inset, inset, inset, inset)
             addView(trackpadButton)
+            addView(settingsButton)
             addView(keyboardButton)
         }
         // One set of modifier buttons: under the action buttons on the pad, above the click buttons on the trackpad.
@@ -109,16 +138,18 @@ class ExternalActionPad(
             orientation = HORIZONTAL
             val m = (3 * density).toInt()
             setPadding(0, m, 0, 0)
-            addView(modifierButton("Shift", XKeycode.KEY_SHIFT_L))
-            addView(modifierButton("Ctrl", XKeycode.KEY_CTRL_L))
-            addView(modifierButton("Alt", XKeycode.KEY_ALT_L))
+            // Which modifiers show is a setting. With none showing, the row (and its backing) stays out of the way.
+            if (PadSettings.bool(PadSettings.MOD_SHIFT)) addView(modifierButton("Shift", XKeycode.KEY_SHIFT_L))
+            if (PadSettings.bool(PadSettings.MOD_CTRL)) addView(modifierButton("Ctrl", XKeycode.KEY_CTRL_L))
+            if (PadSettings.bool(PadSettings.MOD_ALT)) addView(modifierButton("Alt", XKeycode.KEY_ALT_L))
         }
-        padView.setModifierRow(modifierRow)
+        if (modifierRow.childCount > 0) padView.setModifierRow(modifierRow)
         val body = FrameLayout(context).apply {
             layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
             addView(padView)
             addView(trackpadPanel)
             addView(keyboardView)
+            addView(settingsView)
         }
         addView(header)
         addView(body)
@@ -151,7 +182,7 @@ class ExternalActionPad(
             modifierStyles[key] = { active -> style(active) }
             var lastArmedAt = 0L
             setOnClickListener {
-                performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                let { PadSettings.haptic(it) }
                 val now = android.os.SystemClock.uptimeMillis()
                 when {
                     key !in heldModifiers -> {
@@ -160,7 +191,7 @@ class ExternalActionPad(
                         lastArmedAt = now
                         style(true)
                     }
-                    key !in lockedModifiers && now - lastArmedAt <= DOUBLE_TAP_MS -> {
+                    key !in lockedModifiers && now - lastArmedAt <= PadSettings.doubleTapMs -> {
                         lockedModifiers.add(key)
                         style(true)
                     }
@@ -222,7 +253,7 @@ class ExternalActionPad(
             setOnTouchListener { view, event ->
                 when (event.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
-                        view.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                        view.let { PadSettings.haptic(it) }
                         val now = SystemClock.uptimeMillis()
                         if (locked) {
                             send(false)
@@ -232,7 +263,7 @@ class ExternalActionPad(
                         } else {
                             send(true)
                             pressed = true
-                            lockOnRelease = now - lastDownAt <= DOUBLE_TAP_MS
+                            lockOnRelease = now - lastDownAt <= PadSettings.doubleTapMs
                             lastDownAt = now
                         }
                         style()
@@ -276,17 +307,13 @@ class ExternalActionPad(
         super.onDetachedFromWindow()
     }
 
-    private companion object {
-        const val DOUBLE_TAP_MS = 350L
-
-        // Trackpad feel. Lower sensitivity = slower, more precise. Acceleration 1.0 = none.
-        const val TRACKPAD_SENSITIVITY = 0.7f
-        const val TRACKPAD_ACCELERATION = 1.0f
-    }
 
     /** Trackpad and keyboard are mutually exclusive: opening one closes the other. */
     private fun setTrackpad(on: Boolean) {
-        if (on) setKeyboard(false)
+        if (on) {
+            setKeyboard(false)
+            setSettings(false)
+        }
         trackpadPanel.visibility = if (on) View.VISIBLE else View.GONE
         if (!on) releaseMouseButtons.forEach { it() }
         padView.visibility = if (on) View.GONE else View.VISIBLE
@@ -297,24 +324,53 @@ class ExternalActionPad(
             modifierRow.layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (44 * density).toInt()).apply {
                 setMargins(m, 0, m, 0)
             }
-            trackpadPanel.addView(modifierRow, 1)
-        } else {
+            if (modifierRow.childCount > 0) trackpadPanel.addView(modifierRow, 1)
+        } else if (modifierRow.childCount > 0) {
             padView.setModifierRow(modifierRow)
         }
         styleButton(trackpadButton, on)
     }
 
     private fun setKeyboard(on: Boolean) {
-        if (on) setTrackpad(false)
+        if (on) {
+            setTrackpad(false)
+            setSettings(false)
+        }
         keyboardView.visibility = if (on) View.VISIBLE else View.GONE
         // With the keyboard up, the space above it is left blank (just the pad background).
         padView.visibility = if (on) View.GONE else View.VISIBLE
         styleButton(keyboardButton, on)
     }
 
+    /**
+     * The settings screen replaces the pad, like the trackpad and keyboard do. Closing it rebuilds the
+     * pad if any setting changed, so the new layout, look and trackpad feel apply.
+     */
+    private fun setSettings(on: Boolean) {
+        if (on == settingsOpen) return
+        if (on) {
+            setTrackpad(false)
+            setKeyboard(false)
+            settingsVersion = PadSettings.version
+            settingsOpen = true
+            settingsView.visibility = View.VISIBLE
+            padView.visibility = View.GONE
+            styleButton(settingsButton, true)
+        } else {
+            settingsOpen = false
+            if (PadSettings.version != settingsVersion) {
+                buildUi()
+            } else {
+                settingsView.visibility = View.GONE
+                padView.visibility = View.VISIBLE
+                styleButton(settingsButton, false)
+            }
+        }
+    }
+
     private fun circleButton(@DrawableRes icon: Int, label: String, onClick: () -> Unit): ImageButton {
         return ImageButton(context).apply {
-            // The two header buttons split the full width between them.
+            // The header buttons split the full width between them.
             layoutParams = LayoutParams(0, (44 * density).toInt(), 1f).apply {
                 val m = (3 * density).toInt()
                 setMargins(m, 0, m, 0)

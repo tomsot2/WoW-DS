@@ -33,13 +33,15 @@ data class PadTheme(
     /** Faint gold panel behind a group of buttons. [strong] is for the main group. */
     fun groupBackground(density: Float, strong: Boolean): Drawable = GradientDrawable().apply {
         cornerRadius = 12 * density
-        setColor(withAlpha(border, if (strong) 0x21 else 0x0F))
-        setStroke(density.toInt().coerceAtLeast(1), withAlpha(border, if (strong) 0x59 else 0x2E))
+        // The number block's backing follows the "number emphasis" setting (100% = the standard look).
+        val scale = if (strong) PadSettings.emphasis else 1f
+        setColor(withAlpha(border, ((if (strong) 0x21 else 0x0F) * scale).toInt().coerceIn(0, 0xFF)))
+        setStroke(density.toInt().coerceAtLeast(1), withAlpha(border, ((if (strong) 0x59 else 0x2E) * scale).toInt().coerceIn(0, 0xFF)))
     }
 
     /** Dim, thinner trim for secondary buttons, so the action buttons stand out. */
-    private val borderMuted: Int get() = blend(border, keyBottom, MUTED_AMOUNT)
-    private val borderInnerMuted: Int get() = blend(borderInner, keyBottom, MUTED_AMOUNT)
+    private val borderMuted: Int get() = blend(border, keyBottom, PadSettings.mutedAmount)
+    private val borderInnerMuted: Int get() = blend(borderInner, keyBottom, PadSettings.mutedAmount)
 
     private fun blend(from: Int, to: Int, amount: Float): Int {
         fun mix(a: Int, b: Int) = (a + (b - a) * amount).toInt()
@@ -88,9 +90,6 @@ data class PadTheme(
         }
 
     companion object {
-        // How far a muted border is pulled toward the button face (0 = unchanged, 1 = invisible).
-        private const val MUTED_AMOUNT = 0.55f
-
         val DEFAULT = PadTheme(
             background = 0xFF0A0807.toInt(),
             keyTop = 0xFF28201A.toInt(),

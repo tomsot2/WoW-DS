@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.xserver
 
+import app.gamenative.externaldisplay.PadSettings
 import android.app.Activity
 import android.content.Context
 import android.graphics.Color
@@ -2354,6 +2355,7 @@ fun XServerScreen(
                     PluviaApp.radialMenuCoordinator?.setProfile(targetProfile)
 
                     val radialMenuCoordinator = PluviaApp.radialMenuCoordinator
+                    PadSettings.init(context)
                     physicalControllerHandler = PhysicalControllerHandler(
                         targetProfile,
                         xServerView.getxServer(),
@@ -2372,9 +2374,11 @@ fun XServerScreen(
                             updatePhysicalStickAndGetMixedValue(binding, isDown, offset, sourceKeyCode)
                         },
                         onRightStickMouseModeChanged = { mouseMode ->
-                            SnackbarManager.showTop(
-                                if (mouseMode) "Right stick: cursor" else "Right stick: camera",
-                            )
+                            if (PadSettings.bool(PadSettings.MODE_MESSAGE)) {
+                                SnackbarManager.showTop(
+                                    if (mouseMode) "Right stick: cursor" else "Right stick: camera",
+                                )
+                            }
                         },
                     )
                     radialMenuCoordinator?.bindPhysicalControllerHandler(physicalControllerHandler)
