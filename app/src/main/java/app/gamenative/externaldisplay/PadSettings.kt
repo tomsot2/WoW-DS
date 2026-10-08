@@ -44,8 +44,16 @@ object PadSettings {
     const val AB_MODE = "ab_mode"
     const val MODE_MESSAGE = "mode_message"
 
+    /** Every window button the pad can show. Each has an on/off setting, on by default. */
+    val WINDOW_LABELS = listOf(
+        "Map", "Character", "Spellbook", "Talents", "Skills", "Quest Log", "Social", "System",
+        "Bags", "Group Finder", "Achievements", "Guild",
+    )
+
+    fun windowKey(label: String) = "win_$label"
+
     /** Defaults. Decimals are stored as tenths (speeds) or percent (ramp, deadzone, emphasis). */
-    private val DEFAULTS: Map<String, Any> = linkedMapOf(
+    private val DEFAULTS: Map<String, Any> = linkedMapOf<String, Any>(
         MOD_SHIFT to true,
         MOD_CTRL to true,
         MOD_ALT to true,
@@ -70,6 +78,7 @@ object PadSettings {
         AB_MODE to 1,
         MODE_MESSAGE to true,
     )
+        .apply { WINDOW_LABELS.forEach { put(windowKey(it), true) } }
 
     private var prefs: SharedPreferences? = null
 

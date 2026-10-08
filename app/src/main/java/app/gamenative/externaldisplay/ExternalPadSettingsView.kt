@@ -51,6 +51,23 @@ class ExternalPadSettingsView(
         section("Modifier keys shown") {
             addView(toggleRow(listOf("Shift" to PadSettings.MOD_SHIFT, "Ctrl" to PadSettings.MOD_CTRL, "Alt" to PadSettings.MOD_ALT)))
         }
+        section("Window buttons shown") {
+            addView(note("Up to 8 stay in one column. More split it in two."))
+            ExternalActionBarView.availableWindowLabels().chunked(3).forEach { chunk ->
+                addView(
+                    rowOf(
+                        *chunk.map { label ->
+                            button(label, active = PadSettings.bool(PadSettings.windowKey(label))) { b ->
+                                val on = !PadSettings.bool(PadSettings.windowKey(label))
+                                PadSettings.set(PadSettings.windowKey(label), on)
+                                style(b, on)
+                            }
+                        }.toTypedArray(),
+                        filler = 3 - chunk.size,
+                    ),
+                )
+            }
+        }
         section("Pad sections shown") {
             addView(
                 toggleRow(

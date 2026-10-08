@@ -8,6 +8,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
+import app.gamenative.ui.screen.wow.WowFlavor
 import com.winlator.xserver.XKeycode
 import com.winlator.xserver.XServer
 
@@ -33,7 +34,8 @@ class ExternalActionBarView(
     private val onKeyTapped: () -> Unit = {},
 ) : LinearLayout(context) {
 
-    private data class Slot(val label: String, val key: XKeycode)
+    /** [hiddenIn]: flavors whose client has no such window, so the button is never shown there. */
+    private data class Slot(val label: String, val key: XKeycode, val hiddenIn: Set<WowFlavor> = emptySet())
 
     private val downKeys = mutableSetOf<XKeycode>()
     private val rightColumn: LinearLayout
@@ -60,10 +62,23 @@ class ExternalActionBarView(
         setPadding(pad, pad, pad, pad)
 
         // Each group of buttons sits on its own faint backing; the number block's is the strongest.
-        val leftColumn = group(vertical = true, strong = false).apply {
-            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, LEFT_WEIGHT).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) }
-            PANELS.forEach { addView(keyRow(listOf(it), textSp = 15f, weight = 1f, muted = true)) }
-            if (!PadSettings.bool(PadSettings.SEC_WINDOWS)) visibility = GONE
+        // Window buttons: one column up to SINGLE_COLUMN_MAX buttons, two columns beyond that.
+        val windows = visibleWindows()
+        val columns = if (windows.size > SINGLE_COLUMN_MAX) windows.chunked((windows.size + 1) / 2) else listOf(windows)
+        val split = columns.size > 1
+        val leftColumn = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            isMotionEventSplittingEnabled = true
+            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, if (split) SPLIT_LEFT_WEIGHT else LEFT_WEIGHT)
+            columns.forEach { slots ->
+                addView(
+                    group(vertical = true, strong = false).apply {
+                        layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) }
+                        slots.forEach { addView(keyRow(listOf(it), textSp = if (split) 13f else 15f, weight = 1f, muted = true)) }
+                    },
+                )
+            }
+            if (windows.isEmpty() || !PadSettings.bool(PadSettings.SEC_WINDOWS)) visibility = GONE
         }
         modifierGroup = group(vertical = false, strong = false).apply {
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 0.7f).apply { setMargins(0, dp(3), 0, dp(3)) }
@@ -97,6 +112,11 @@ class ExternalActionBarView(
             addView(leftColumn)
             addView(rightColumn)
         }
+    }
+
+    /** The window buttons to show: switched on in settings and present in the selected client. */
+    private fun visibleWindows(): List<Slot> = PANELS.filter { slot ->
+        PadSettings.bool(PadSettings.windowKey(slot.label)) && WowFlavor.current !in slot.hiddenIn
     }
 
     /** Puts the modifier buttons above the action buttons. */
@@ -215,6 +235,10 @@ class ExternalActionBarView(
 
     companion object {
         /** Every remappable pad button: its label and the key it sends by default. */
+        /** Window buttons that exist in the selected client, for the "Window buttons shown" settings. */
+        fun availableWindowLabels(): List<String> =
+            PANELS.filter { WowFlavor.current !in it.hiddenIn }.map { it.label }
+
         fun remappableButtons(): List<Pair<String, XKeycode>> =
             (PANELS + ACTION_SLOTS + FUNCTION_KEYS).map { it.label to it.key }
 
@@ -222,6 +246,10 @@ class ExternalActionBarView(
         // A smaller RIGHT_WEIGHT squeezes that block toward the right edge, within reach of a right thumb.
         private const val LEFT_WEIGHT = 1f
         private const val RIGHT_WEIGHT = 1f
+
+        // Up to this many window buttons stay in one column; more split it in two, a little wider overall.
+        private const val SINGLE_COLUMN_MAX = 8
+        private const val SPLIT_LEFT_WEIGHT = 1.45f
 
         // WoW's default bindings for the character, spellbook and similar windows.
         private val PANELS = listOf(
@@ -234,6 +262,11 @@ class ExternalActionBarView(
             Slot("Social", XKeycode.KEY_O),
             // Escape opens the game menu ("System") when nothing else is open.
             Slot("System", XKeycode.KEY_ESC),
+            // Windows that Classic Era's client doesn't have.
+            Slot("Bags", XKeycode.KEY_B),
+            Slot("Group Finder", XKeycode.KEY_I, hiddenIn = setOf(WowFlavor.CLASSIC_ERA)),
+            Slot("Achievements", XKeycode.KEY_Y, hiddenIn = setOf(WowFlavor.CLASSIC_ERA)),
+            Slot("Guild", XKeycode.KEY_J, hiddenIn = setOf(WowFlavor.CLASSIC_ERA)),
         )
 
         private val FUNCTION_KEYS = listOf(
