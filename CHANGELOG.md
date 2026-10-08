@@ -12,6 +12,9 @@ Each version's section becomes its GitHub release notes, which the app also show
 ### Changed
 - **Swap sides** is replaced by the layout editor. If you had it on, your pad starts out mirrored.
 
+### Fixed
+- Burn-in protection no longer shows a white border at the edges of the bottom screen. It now moves the pad's contents within its dark background, and the window behind the pad is dark too.
+
 ## [1.1.0]
 
 The bottom-screen pad now covers what's awkward with WoW's gamepad controls: chat, raid markers and the odd command.

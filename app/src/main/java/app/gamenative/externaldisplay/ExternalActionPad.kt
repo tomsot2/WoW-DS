@@ -68,8 +68,7 @@ class ExternalActionPad(
 
     private val shiftRunnable: Runnable = Runnable {
         val range = SHIFT_RANGE_DP * density
-        translationX = (Math.random().toFloat() * 2 - 1) * range
-        translationY = (Math.random().toFloat() * 2 - 1) * range
+        shiftContent((Math.random().toFloat() * 2 - 1) * range, (Math.random().toFloat() * 2 - 1) * range)
         scheduleShift()
     }
 
@@ -286,7 +285,7 @@ class ExternalActionPad(
     }
 
     /**
-     * Burn-in protection: every few minutes the whole pad moves to a new spot a few pixels away, so no
+     * Burn-in protection: every few minutes the pad's contents move to a new spot a few pixels away, so no
      * edge sits on the same OLED pixels for hours. It's too small a move to notice.
      */
     private fun scheduleShift() {
@@ -294,8 +293,19 @@ class ExternalActionPad(
         if (PadSettings.bool(PadSettings.BURN_IN_SHIFT)) {
             postDelayed(shiftRunnable, SHIFT_INTERVAL_MS)
         } else {
-            translationX = 0f
-            translationY = 0f
+            shiftContent(0f, 0f)
+        }
+    }
+
+    /**
+     * Moves what's on the pad (the header and everything below it), not the pad itself: the pad's dark
+     * background stays put and fills the strip uncovered at the edge. Moving the whole pad would uncover
+     * the window behind it, which shows as a white border.
+     */
+    private fun shiftContent(x: Float, y: Float) {
+        for (i in 0 until childCount) {
+            getChildAt(i).translationX = x
+            getChildAt(i).translationY = y
         }
     }
 

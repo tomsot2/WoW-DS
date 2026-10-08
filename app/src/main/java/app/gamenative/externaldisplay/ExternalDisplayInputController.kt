@@ -209,6 +209,8 @@ private class ExternalInputPresentation(
                 setContentView(hybrid)
             }
             ExternalDisplayInputController.Mode.BUTTONS -> {
+                // The window behind the pad is dark too, so nothing light can ever show at its edges.
+                window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(PadTheme.DEFAULT.background))
                 setContentView(ExternalActionPad(context, xServer, PadTheme.DEFAULT, touchpadViewProvider))
             }
             else -> {
