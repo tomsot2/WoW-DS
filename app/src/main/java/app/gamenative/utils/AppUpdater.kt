@@ -14,7 +14,7 @@ import org.json.JSONObject
 import timber.log.Timber
 
 object AppUpdater {
-    private const val RELEASES_URL = "https://api.github.com/repos/redly03/wow-forever-android/releases/latest"
+    private const val RELEASES_URL = "https://api.github.com/repos/wyattabuntjer/AYN-Thor-WoW-Launcher/releases/latest"
 
     data class Release(
         val version: String,
