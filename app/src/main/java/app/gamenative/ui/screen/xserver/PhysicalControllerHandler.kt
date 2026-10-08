@@ -34,7 +34,6 @@ class PhysicalControllerHandler(
     private val onRadialMenuVectorChanged: ((Float, Float) -> Unit)? = null,
     private val onGyroModifierChanged: ((Any, Boolean) -> Unit)? = null,
     private val gyroStickMixer: ((Binding, Boolean, Float, Int) -> Float)? = null,
-    private val onRightStickMouseModeChanged: ((Boolean) -> Unit)? = null,
     private val gamepadStateSender: (GamepadState?) -> Unit = { state ->
         xServer?.winHandler?.let { winHandler ->
             winHandler.sendGamepadState()
@@ -73,20 +72,6 @@ class PhysicalControllerHandler(
     private val activeSequenceBindings = mutableMapOf<Binding, Int>()
     private val activeSequenceGyroSources = mutableSetOf<PhysicalInputSource>()
     private val activeGyroModifierSources = mutableSetOf<PhysicalInputSource>()
-
-    // When true, the right stick moves the X pointer instead of acting as the gamepad camera stick.
-    // Toggled by clicking R3 (stick click). Touched on the main thread only.
-    private var rightStickMouseMode = false
-
-    // Physical key code -> mouse button binding for A/B clicks started while in cursor mode.
-    private val cursorClickBindings = mutableMapOf<Int, Binding>()
-
-    private fun releaseCursorClicks() {
-        for (click in cursorClickBindings.values) {
-            click.pointerButton?.let { xServer?.injectPointerButtonRelease(it) }
-        }
-        cursorClickBindings.clear()
-    }
 
     // Tracks whether SHOW_KEYBOARD is currently held, so onShowKeyboard fires once per press (rising edge only)
     private var showKeyboardPressed = false
@@ -167,8 +152,6 @@ class PhysicalControllerHandler(
         clearMouseMoveContributions()
         clearScrollRepeats()
         activeSequenceTriggerBindings.clear()
-        releaseCursorClicks()
-        rightStickMouseMode = false
         showKeyboardPressed = false
         closeRadialMenuIfOpen(commit = false)
         sendGamepadState()
@@ -197,45 +180,6 @@ class PhysicalControllerHandler(
             val keyCode = JoyConSupport.remapKeyCode(event.device, event)
             if (radialMenuPressed && !isRadialMenuOpenerDevice(event.deviceId)) return true
             val controller = profile?.getController(event.deviceId)
-            if (keyCode == KeyEvent.KEYCODE_BUTTON_THUMBR && controller != null && rightStickMouseMode &&
-                !PadSettings.bool(PadSettings.R3_TOGGLE)
-            ) {
-                // R3 toggling was switched off in the pad settings while cursor mode was on: drop back to the gamepad.
-                setRightStickMouseMode(false, event.deviceId)
-            }
-            if (keyCode == KeyEvent.KEYCODE_BUTTON_THUMBR && controller != null && !radialMenuPressed &&
-                PadSettings.bool(PadSettings.R3_TOGGLE)
-            ) {
-                // R3 click toggles the right stick between camera (gamepad) and mouse pointer.
-                if (event.action == KeyEvent.ACTION_DOWN) {
-                    setRightStickMouseMode(!rightStickMouseMode, event.deviceId)
-                }
-                return true
-            }
-            if (controller != null && !radialMenuPressed) {
-                // Always finish a click we started, even if the mode was switched meanwhile.
-                if (event.action == KeyEvent.ACTION_UP) {
-                    cursorClickBindings.remove(keyCode)?.let { click ->
-                        click.pointerButton?.let { xServer?.injectPointerButtonRelease(it) }
-                        return true
-                    }
-                } else if (event.action == KeyEvent.ACTION_DOWN && rightStickMouseMode && PadSettings.int(PadSettings.AB_MODE) != 0) {
-                    // Cursor mode: the pad's A / B buttons act as left / right click (or swapped, per the setting).
-                    val swapped = PadSettings.int(PadSettings.AB_MODE) == 2
-                    val bindings = controller.getControllerBinding(keyCode)?.bindingCombo?.bindings
-                    val click = when {
-                        bindings == null -> null
-                        Binding.GAMEPAD_BUTTON_A in bindings -> if (swapped) Binding.MOUSE_RIGHT_BUTTON else Binding.MOUSE_LEFT_BUTTON
-                        Binding.GAMEPAD_BUTTON_B in bindings -> if (swapped) Binding.MOUSE_LEFT_BUTTON else Binding.MOUSE_RIGHT_BUTTON
-                        else -> null
-                    }
-                    if (click != null) {
-                        cursorClickBindings[keyCode] = click
-                        click.pointerButton?.let { xServer?.injectPointerButtonPress(it) }
-                        return true
-                    }
-                }
-            }
             if (controller != null) {
                 val controllerBinding = controller.getControllerBinding(keyCode)
                 if (radialMenuPressed && controllerBinding?.bindingCombo?.bindings?.contains(Binding.OPEN_RADIAL_MENU) == true) {
@@ -397,71 +341,6 @@ class PhysicalControllerHandler(
         gamepadStateSender(profile?.gamepadState)
     }
 
-    private fun rightStickKeyCodes(): List<Int> = listOf(
-        ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_Z, 1.toByte()),
-        ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_Z, (-1).toByte()),
-        ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_RZ, 1.toByte()),
-        ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_RZ, (-1).toByte()),
-    )
-
-    /**
-     * Switch the right stick between gamepad camera and mouse pointer.
-     * Either way the stick we are leaving is released first, so nothing stays held.
-     */
-    private fun setRightStickMouseMode(enabled: Boolean, deviceId: Int) {
-        if (rightStickMouseMode == enabled) return
-        rightStickMouseMode = enabled
-        val stickKeys = rightStickKeyCodes()
-        if (enabled) {
-            // Center the gamepad right stick: release any active right-stick axis bindings.
-            for (source in activeAxisBindings.toList()) {
-                if (source.keyCode !in stickKeys) continue
-                activeAxisBindings.remove(source)
-                val controller = profile?.getController(source.deviceId) ?: continue
-                controller.getControllerBinding(source.keyCode)?.let {
-                    handleInputEvent(
-                        it.bindingCombo,
-                        false,
-                        0f,
-                        fromMotion = true,
-                        sourceKeyCode = source.keyCode,
-                        sourceDeviceId = source.deviceId,
-                        sourceController = controller,
-                    )
-                }
-            }
-        } else {
-            mouseMoveContributions.keys.removeAll { it.keyCode in stickKeys }
-            recalculateMouseMoveOffset()
-        }
-        sendGamepadState()
-        onRightStickMouseModeChanged?.invoke(enabled)
-    }
-
-    /** Drive the X pointer from one right-stick axis while mouse mode is on. */
-    private fun applyRightStickAsMouse(axis: Int, value: Float, deviceId: Int) {
-        val posKey = ExternalControllerBinding.getKeyCodeForAxis(axis, 1.toByte())
-        val negKey = ExternalControllerBinding.getKeyCodeForAxis(axis, (-1).toByte())
-        val horizontal = axis == MotionEvent.AXIS_Z
-        val positiveBinding = if (horizontal) Binding.MOUSE_MOVE_RIGHT else Binding.MOUSE_MOVE_DOWN
-        val negativeBinding = if (horizontal) Binding.MOUSE_MOVE_LEFT else Binding.MOUSE_MOVE_UP
-        if (Math.abs(value) > PadSettings.stickDeadzone) {
-            val active = if (value > 0f) positiveBinding else negativeBinding
-            val inactive = if (value > 0f) negativeBinding else positiveBinding
-            // Speed stays at the base speed until the ramp start (a setting), then ramps up to the max speed
-            // at full tilt, slowly at first and faster near the end (squared curve).
-            val rampStart = PadSettings.stickRampStart
-            val tilt = ((Math.abs(value) - rampStart) / (1f - rampStart)).coerceIn(0f, 1f)
-            val base = PadSettings.stickBaseSpeed
-            val scaled = value * (base + (PadSettings.stickMaxSpeed - base) * tilt * tilt)
-            updateMouseMoveContribution(inactive, false, 0f, if (value > 0f) negKey else posKey, deviceId)
-            updateMouseMoveContribution(active, true, scaled, if (value > 0f) posKey else negKey, deviceId)
-        } else {
-            updateMouseMoveContribution(positiveBinding, false, 0f, posKey, deviceId)
-            updateMouseMoveContribution(negativeBinding, false, 0f, negKey, deviceId)
-        }
-    }
-
     /**
      * Create a timer for continuous mouse movement injection.
      * Runs at 60 FPS, injecting mouse deltas based on mouseMoveOffset.
@@ -612,10 +491,6 @@ class PhysicalControllerHandler(
         )
 
         for (i in axes.indices) {
-            if (rightStickMouseMode && (axes[i] == MotionEvent.AXIS_Z || axes[i] == MotionEvent.AXIS_RZ)) {
-                applyRightStickAsMouse(axes[i], values[i], deviceId)
-                continue
-            }
             val posKeyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], 1.toByte())
             val negKeyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], (-1).toByte())
             val positiveSource = PhysicalInputSource(deviceId, posKeyCode)

@@ -3,10 +3,10 @@ package app.gamenative.externaldisplay
 import android.content.Context
 import android.graphics.drawable.StateListDrawable
 import android.view.Gravity
-import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import app.gamenative.R
 import com.winlator.xserver.XKeycode
@@ -18,8 +18,6 @@ class ExternalOnScreenKeyboardView(
     private val theme: PadTheme = PadTheme.DEFAULT,
 ) : LinearLayout(context) {
 
-    private enum class ShiftState { OFF, ON, CAPS }
-
     private data class KeySpec(
         val normalLabel: String,
         val shiftedLabel: String? = null,
@@ -27,11 +25,9 @@ class ExternalOnScreenKeyboardView(
         val weight: Float = 1f,
         val isLetter: Boolean = false,
         val action: Action = Action.INPUT,
-        /** Symbol-page keys that type the shifted character (e.g. "!" is Shift+1). */
-        val sendShifted: Boolean = false,
     )
 
-    private enum class Action { INPUT, SHIFT, BACKSPACE, ENTER, SPACE, TAB, ESC, ARROW_LEFT, ARROW_DOWN, ARROW_RIGHT, ARROW_UP, SYMBOLS }
+    private enum class Action { INPUT, SHIFT, CAPS, BACKSPACE, ENTER, SPACE, TAB, ESC, ARROW_LEFT, ARROW_DOWN, ARROW_RIGHT, ARROW_UP }
 
     private data class KeyButton(
         val spec: KeySpec,
@@ -40,8 +36,10 @@ class ExternalOnScreenKeyboardView(
 
     private val keyButtons = mutableListOf<KeyButton>()
     private val downKeys = mutableSetOf<XKeycode>()
-    private var shiftState: ShiftState = ShiftState.OFF
-    private var showSymbols = false
+    /** Shift applies to the next key only, then lets go by itself. */
+    private var shiftOn = false
+    /** Caps Lock capitalises letters until tapped again; numbers and symbols are unaffected, as on a real keyboard. */
+    private var capsOn = false
 
     init {
         orientation = VERTICAL
@@ -53,17 +51,17 @@ class ExternalOnScreenKeyboardView(
         refreshLabels()
     }
 
+    /**
+     * A standard US QWERTY keyboard. Every row adds up to 15 key widths, so the rows line up with the
+     * same stagger as a real keyboard. Shifted symbols come from Shift, as on a physical keyboard.
+     */
     private fun buildLayout() {
         keyButtons.clear()
         removeAllViews()
-        if (showSymbols) buildSymbolsPage() else buildMainPage()
-    }
 
-    /** Letters, digits and the few symbols used when chatting. Everything else lives on the symbols page. */
-    private fun buildMainPage() {
         addRow(
             listOf(
-                KeySpec("Esc", keycode = XKeycode.KEY_ESC, weight = 1.25f, action = Action.ESC),
+                KeySpec("`", "~", XKeycode.KEY_GRAVE),
                 KeySpec("1", "!", XKeycode.KEY_1),
                 KeySpec("2", "@", XKeycode.KEY_2),
                 KeySpec("3", "#", XKeycode.KEY_3),
@@ -74,7 +72,9 @@ class ExternalOnScreenKeyboardView(
                 KeySpec("8", "*", XKeycode.KEY_8),
                 KeySpec("9", "(", XKeycode.KEY_9),
                 KeySpec("0", ")", XKeycode.KEY_0),
-                KeySpec("⌫", keycode = XKeycode.KEY_BKSP, weight = 1.75f, action = Action.BACKSPACE),
+                KeySpec("-", "_", XKeycode.KEY_MINUS),
+                KeySpec("=", "+", XKeycode.KEY_EQUAL),
+                KeySpec("⌫", keycode = XKeycode.KEY_BKSP, weight = 2f, action = Action.BACKSPACE),
             ),
         )
 
@@ -91,12 +91,15 @@ class ExternalOnScreenKeyboardView(
                 KeySpec("i", "I", XKeycode.KEY_I, isLetter = true),
                 KeySpec("o", "O", XKeycode.KEY_O, isLetter = true),
                 KeySpec("p", "P", XKeycode.KEY_P, isLetter = true),
+                KeySpec("[", "{", XKeycode.KEY_BRACKET_LEFT),
+                KeySpec("]", "}", XKeycode.KEY_BRACKET_RIGHT),
+                KeySpec("\\", "|", XKeycode.KEY_BACKSLASH, weight = 1.5f),
             ),
         )
 
         addRow(
             listOf(
-                KeySpec("Shift", weight = 1.75f, action = Action.SHIFT),
+                KeySpec("Caps", weight = 1.75f, action = Action.CAPS),
                 KeySpec("a", "A", XKeycode.KEY_A, isLetter = true),
                 KeySpec("s", "S", XKeycode.KEY_S, isLetter = true),
                 KeySpec("d", "D", XKeycode.KEY_D, isLetter = true),
@@ -106,13 +109,15 @@ class ExternalOnScreenKeyboardView(
                 KeySpec("j", "J", XKeycode.KEY_J, isLetter = true),
                 KeySpec("k", "K", XKeycode.KEY_K, isLetter = true),
                 KeySpec("l", "L", XKeycode.KEY_L, isLetter = true),
-                KeySpec("Enter", keycode = XKeycode.KEY_ENTER, weight = 2.0f, action = Action.ENTER),
+                KeySpec(";", ":", XKeycode.KEY_SEMICOLON),
+                KeySpec("'", "\"", XKeycode.KEY_APOSTROPHE),
+                KeySpec("Enter", keycode = XKeycode.KEY_ENTER, weight = 2.25f, action = Action.ENTER),
             ),
         )
 
         addRow(
             listOf(
-                KeySpec("Sym", weight = 1.25f, action = Action.SYMBOLS),
+                KeySpec("Shift", weight = 2.25f, action = Action.SHIFT),
                 KeySpec("z", "Z", XKeycode.KEY_Z, isLetter = true),
                 KeySpec("x", "X", XKeycode.KEY_X, isLetter = true),
                 KeySpec("c", "C", XKeycode.KEY_C, isLetter = true),
@@ -123,74 +128,18 @@ class ExternalOnScreenKeyboardView(
                 KeySpec(",", "<", XKeycode.KEY_COMMA),
                 KeySpec(".", ">", XKeycode.KEY_PERIOD),
                 KeySpec("/", "?", XKeycode.KEY_SLASH),
+                KeySpec("Shift", weight = 2.75f, action = Action.SHIFT),
             ),
         )
 
         addRow(
             listOf(
-                KeySpec("Space", keycode = XKeycode.KEY_SPACE, weight = 6f, action = Action.SPACE),
-            ),
-        )
-    }
-
-    /** Every symbol key, each typing the character it shows. "ABC" returns to the letters. */
-    private fun buildSymbolsPage() {
-        fun sym(label: String, key: XKeycode, shifted: Boolean) = KeySpec(label, keycode = key, sendShifted = shifted)
-
-        addRow(
-            listOf(
-                sym("!", XKeycode.KEY_1, true),
-                sym("@", XKeycode.KEY_2, true),
-                sym("#", XKeycode.KEY_3, true),
-                sym("$", XKeycode.KEY_4, true),
-                sym("%", XKeycode.KEY_5, true),
-                sym("^", XKeycode.KEY_6, true),
-                sym("&", XKeycode.KEY_7, true),
-                sym("*", XKeycode.KEY_8, true),
-                sym("(", XKeycode.KEY_9, true),
-                sym(")", XKeycode.KEY_0, true),
-                KeySpec("⌫", keycode = XKeycode.KEY_BKSP, weight = 1.75f, action = Action.BACKSPACE),
-            ),
-        )
-
-        addRow(
-            listOf(
-                sym("-", XKeycode.KEY_MINUS, false),
-                sym("_", XKeycode.KEY_MINUS, true),
-                sym("=", XKeycode.KEY_EQUAL, false),
-                sym("+", XKeycode.KEY_EQUAL, true),
-                sym("[", XKeycode.KEY_BRACKET_LEFT, false),
-                sym("]", XKeycode.KEY_BRACKET_RIGHT, false),
-                sym("{", XKeycode.KEY_BRACKET_LEFT, true),
-                sym("}", XKeycode.KEY_BRACKET_RIGHT, true),
-                sym("\\", XKeycode.KEY_BACKSLASH, false),
-                sym("|", XKeycode.KEY_BACKSLASH, true),
-            ),
-        )
-
-        addRow(
-            listOf(
-                sym(";", XKeycode.KEY_SEMICOLON, false),
-                sym(":", XKeycode.KEY_SEMICOLON, true),
-                sym("'", XKeycode.KEY_APOSTROPHE, false),
-                sym("\"", XKeycode.KEY_APOSTROPHE, true),
-                sym("`", XKeycode.KEY_GRAVE, false),
-                sym("~", XKeycode.KEY_GRAVE, true),
-                sym("<", XKeycode.KEY_COMMA, true),
-                sym(">", XKeycode.KEY_PERIOD, true),
-                sym("?", XKeycode.KEY_SLASH, true),
-                KeySpec("Enter", keycode = XKeycode.KEY_ENTER, weight = 1.75f, action = Action.ENTER),
-            ),
-        )
-
-        addRow(
-            listOf(
-                KeySpec("ABC", weight = 1.5f, action = Action.SYMBOLS),
-                KeySpec("Space", keycode = XKeycode.KEY_SPACE, weight = 6f, action = Action.SPACE),
-                KeySpec("←", keycode = XKeycode.KEY_LEFT, weight = 1.25f, action = Action.ARROW_LEFT),
-                KeySpec("↓", keycode = XKeycode.KEY_DOWN, weight = 1.25f, action = Action.ARROW_DOWN),
-                KeySpec("↑", keycode = XKeycode.KEY_UP, weight = 1.25f, action = Action.ARROW_UP),
-                KeySpec("→", keycode = XKeycode.KEY_RIGHT, weight = 1.25f, action = Action.ARROW_RIGHT),
+                KeySpec("Esc", keycode = XKeycode.KEY_ESC, weight = 1.5f, action = Action.ESC),
+                KeySpec("Space", keycode = XKeycode.KEY_SPACE, weight = 9.5f, action = Action.SPACE),
+                KeySpec("←", keycode = XKeycode.KEY_LEFT, action = Action.ARROW_LEFT),
+                KeySpec("↓", keycode = XKeycode.KEY_DOWN, action = Action.ARROW_DOWN),
+                KeySpec("↑", keycode = XKeycode.KEY_UP, action = Action.ARROW_UP),
+                KeySpec("→", keycode = XKeycode.KEY_RIGHT, action = Action.ARROW_RIGHT),
             ),
         )
     }
@@ -206,7 +155,7 @@ class ExternalOnScreenKeyboardView(
         }
 
         val margin = dp(3)
-        val height = dp(48)
+        val height = dp(54)
 
         keys.forEach { spec ->
             val button = Button(context).apply {
@@ -217,20 +166,31 @@ class ExternalOnScreenKeyboardView(
                 text = spec.normalLabel
                 background = createKeyBackground(normal = true)
                 setPadding(0, 0, 0, 0)
-                layoutParams = LayoutParams(0, height, spec.weight).apply {
-                    setMargins(margin, margin, margin, margin)
-                }
+                // Narrow keys (1 unit) are smaller than a Button's default minimum size.
+                minWidth = 0
+                minimumWidth = 0
+                minHeight = 0
+                minimumHeight = 0
+                layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                 setOnTouchListener { view, event ->
                     if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-                        // Same tap feedback as the pad buttons.
-                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                        // Same tap feedback as the pad buttons, following the Haptics setting.
+                        PadSettings.haptic(view)
                     }
                     handleKeyTouch(spec, event)
                     false
                 }
             }
             keyButtons += KeyButton(spec, button)
-            row.addView(button)
+            // The gap between keys is padding inside each key's cell rather than a margin, so the width
+            // of one key unit is the same on every row and the columns line up like a real keyboard.
+            row.addView(
+                FrameLayout(context).apply {
+                    setPadding(margin, margin, margin, margin)
+                    layoutParams = LayoutParams(0, height, spec.weight)
+                    addView(button)
+                },
+            )
         }
 
         addView(row)
@@ -245,7 +205,7 @@ class ExternalOnScreenKeyboardView(
 
     private fun onKeyDown(spec: KeySpec) {
         when (spec.action) {
-            Action.SHIFT, Action.SYMBOLS -> Unit
+            Action.SHIFT, Action.CAPS -> Unit
             Action.BACKSPACE -> pressKey(XKeycode.KEY_BKSP)
             Action.ENTER -> pressKey(XKeycode.KEY_ENTER)
             Action.SPACE -> pressKey(XKeycode.KEY_SPACE)
@@ -257,14 +217,9 @@ class ExternalOnScreenKeyboardView(
             Action.ARROW_UP -> pressKey(XKeycode.KEY_UP)
             Action.INPUT -> {
                 val keycode = spec.keycode ?: return
-                val useShift = spec.sendShifted || when (shiftState) {
-                    ShiftState.OFF -> false
-                    ShiftState.ON -> true
-                    ShiftState.CAPS -> spec.isLetter
-                }
-                pressKey(keycode, withShift = useShift)
-                if (shiftState == ShiftState.ON) {
-                    shiftState = ShiftState.OFF
+                pressKey(keycode, withShift = isShifted(spec))
+                if (shiftOn) {
+                    shiftOn = false
                     refreshLabels()
                 }
             }
@@ -273,10 +228,12 @@ class ExternalOnScreenKeyboardView(
 
     private fun onKeyUp(spec: KeySpec, cancel: Boolean) {
         when (spec.action) {
-            Action.SHIFT -> if (!cancel) cycleShift()
-            Action.SYMBOLS -> if (!cancel) post {
-                showSymbols = !showSymbols
-                buildLayout()
+            Action.SHIFT -> if (!cancel) {
+                shiftOn = !shiftOn
+                refreshLabels()
+            }
+            Action.CAPS -> if (!cancel) {
+                capsOn = !capsOn
                 refreshLabels()
             }
             Action.BACKSPACE -> releaseKey(XKeycode.KEY_BKSP)
@@ -292,41 +249,19 @@ class ExternalOnScreenKeyboardView(
         }
     }
 
-    private fun cycleShift() {
-        shiftState = when (shiftState) {
-            ShiftState.OFF -> ShiftState.ON
-            ShiftState.ON -> ShiftState.CAPS
-            ShiftState.CAPS -> ShiftState.OFF
-        }
-        refreshLabels()
-    }
+    /** Letters follow Shift and Caps Lock (Shift with Caps on gives lowercase); everything else only Shift. */
+    private fun isShifted(spec: KeySpec): Boolean = if (spec.isLetter) shiftOn != capsOn else shiftOn
 
     private fun refreshLabels() {
-        val shiftForLetters = shiftState != ShiftState.OFF
         keyButtons.forEach { (spec, button) ->
-            if (spec.action == Action.SHIFT) {
-                val label = when (shiftState) {
-                    ShiftState.OFF -> "Shift"
-                    ShiftState.ON -> "Shift"
-                    ShiftState.CAPS -> "Caps"
+            when (spec.action) {
+                Action.SHIFT -> button.background = createKeyBackground(normal = !shiftOn, highlight = shiftOn)
+                Action.CAPS -> button.background = createKeyBackground(normal = !capsOn, highlight = capsOn, strong = capsOn)
+                else -> {
+                    button.text = if (isShifted(spec) && spec.shiftedLabel != null) spec.shiftedLabel else spec.normalLabel
+                    button.background = createKeyBackground(normal = true)
                 }
-                button.text = label
-                button.background = when (shiftState) {
-                    ShiftState.OFF -> createKeyBackground(normal = true)
-                    ShiftState.ON -> createKeyBackground(highlight = true)
-                    ShiftState.CAPS -> createKeyBackground(highlight = true, strong = true)
-                }
-                return@forEach
             }
-
-            val showShifted = when {
-                spec.isLetter -> shiftForLetters
-                shiftState == ShiftState.ON -> true
-                else -> false
-            }
-
-            button.text = if (showShifted && spec.shiftedLabel != null) spec.shiftedLabel else spec.normalLabel
-            button.background = createKeyBackground(normal = true)
         }
     }
 

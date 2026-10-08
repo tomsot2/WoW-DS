@@ -1,6 +1,8 @@
 package app.gamenative.externaldisplay
 
 import android.content.Context
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -52,6 +54,12 @@ class ExternalActionPad(
     private lateinit var padModifierRow: LinearLayout
     private lateinit var trackpadModifierRow: LinearLayout
     private val releaseMouseButtons = mutableListOf<() -> Unit>()
+
+    // Idle dimming: after a while without a touch the whole pad is darkened (see PadSettings.DIM_IDLE).
+    private var dimmed = false
+    // True while the touch that woke the pad is still down, so that touch doesn't press anything.
+    private var swallowingWakeTouch = false
+    private val dimRunnable = Runnable { setDimmed(true) }
 
     init {
         PadSettings.init(context)
@@ -167,6 +175,44 @@ class ExternalActionPad(
         }
         addView(header)
         addView(body)
+        // The dim time or amount may have just changed in settings.
+        setDimmed(false)
+        scheduleDim()
+    }
+
+    /**
+     * Every touch on the pad passes through here first. A touch on a dimmed pad only wakes it: the whole
+     * gesture is swallowed so the button under the finger isn't pressed by accident. The idle countdown
+     * waits while a finger is down, so holding a button never dims the pad.
+     */
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                removeCallbacks(dimRunnable)
+                swallowingWakeTouch = dimmed
+                if (dimmed) setDimmed(false)
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> scheduleDim()
+        }
+        if (swallowingWakeTouch) return true
+        return super.dispatchTouchEvent(event)
+    }
+
+    private fun scheduleDim() {
+        removeCallbacks(dimRunnable)
+        val delay = PadSettings.dimIdleMs
+        if (delay > 0) postDelayed(dimRunnable, delay)
+    }
+
+    /** Darkens everything on the pad with a black layer drawn over it. */
+    private fun setDimmed(on: Boolean) {
+        dimmed = on
+        foreground = if (on) ColorDrawable(Color.argb((PadSettings.dimAmount * 255).toInt(), 0, 0, 0)) else null
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        scheduleDim()
     }
 
     /**
@@ -314,6 +360,7 @@ class ExternalActionPad(
 
     /** Never leave a modifier stuck down if the display goes away. */
     override fun onDetachedFromWindow() {
+        removeCallbacks(dimRunnable)
         heldModifiers.toList().forEach { xServer.injectKeyRelease(it) }
         heldModifiers.clear()
         lockedModifiers.clear()

@@ -18,7 +18,7 @@ import com.winlator.xserver.XServer
  * Left half: a column of window shortcuts (Map, Character, Spellbook, Talents, Skills, Quest Log,
  * Social, System).
  * Right half, top to bottom: the modifier buttons (see [setModifierRow]), the 12 action buttons
- * (4 rows of 3), and F1-F12 in two rows.
+ * (4 rows of 3), and a party row (Me, P1-P4) that sends F1-F5 to target yourself or a party member.
  *
  * Every button sends WoW's default key, so the pad works with the stock bindings and needs no addon.
  * To use different keys, change the lists in the companion object.
@@ -91,18 +91,15 @@ class ExternalActionBarView(
             }
             if (!PadSettings.bool(PadSettings.SEC_NUMBERS)) visibility = GONE
         }
-        val functionGroup = group(vertical = true, strong = false).apply {
+        val partyGroup = group(vertical = true, strong = false).apply {
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1.2f).apply { setMargins(0, dp(3), 0, dp(3)) }
-            // F1-F12 in two rows, or F1-F6 in one row that fills the same space with bigger buttons.
-            val sixOnly = PadSettings.int(PadSettings.FKEY_COUNT) == 1
-            val fKeys = if (sixOnly) FUNCTION_KEYS.take(6) else FUNCTION_KEYS
-            fKeys.chunked(6).forEach { addView(keyRow(it, textSp = if (sixOnly) 16f else 13f, weight = 1f, muted = true)) }
-            if (!PadSettings.bool(PadSettings.SEC_FKEYS)) visibility = GONE
+            addView(keyRow(PARTY_SLOTS, textSp = 16f, weight = 1f, muted = true))
+            if (!PadSettings.bool(PadSettings.SEC_PARTY)) visibility = GONE
         }
         rightColumn = column(RIGHT_WEIGHT).apply {
             addView(modifierGroup)
             addView(numberGroup)
-            addView(functionGroup)
+            addView(partyGroup)
         }
         // "Swap sides" puts the window column on the right.
         if (PadSettings.bool(PadSettings.SWAP_SIDES)) {
@@ -240,7 +237,7 @@ class ExternalActionBarView(
             PANELS.filter { WowFlavor.current !in it.hiddenIn }.map { it.label }
 
         fun remappableButtons(): List<Pair<String, XKeycode>> =
-            (PANELS + ACTION_SLOTS + FUNCTION_KEYS).map { it.label to it.key }
+            (PANELS + ACTION_SLOTS + PARTY_SLOTS).map { it.label to it.key }
 
         // Width split between the window-shortcut column and the F-key/number/modifier block.
         // A smaller RIGHT_WEIGHT squeezes that block toward the right edge, within reach of a right thumb.
@@ -269,19 +266,13 @@ class ExternalActionBarView(
             Slot("Guild", XKeycode.KEY_J, hiddenIn = setOf(WowFlavor.CLASSIC_ERA)),
         )
 
-        private val FUNCTION_KEYS = listOf(
-            Slot("F1", XKeycode.KEY_F1),
-            Slot("F2", XKeycode.KEY_F2),
-            Slot("F3", XKeycode.KEY_F3),
-            Slot("F4", XKeycode.KEY_F4),
-            Slot("F5", XKeycode.KEY_F5),
-            Slot("F6", XKeycode.KEY_F6),
-            Slot("F7", XKeycode.KEY_F7),
-            Slot("F8", XKeycode.KEY_F8),
-            Slot("F9", XKeycode.KEY_F9),
-            Slot("F10", XKeycode.KEY_F10),
-            Slot("F11", XKeycode.KEY_F11),
-            Slot("F12", XKeycode.KEY_F12),
+        // WoW's default party targeting: F1 targets yourself, F2-F5 party members 1-4.
+        private val PARTY_SLOTS = listOf(
+            Slot("Me", XKeycode.KEY_F1),
+            Slot("P1", XKeycode.KEY_F2),
+            Slot("P2", XKeycode.KEY_F3),
+            Slot("P3", XKeycode.KEY_F4),
+            Slot("P4", XKeycode.KEY_F5),
         )
 
         // WoW's default bindings for Action Bar 1, slots 1 to 12.

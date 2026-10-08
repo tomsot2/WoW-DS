@@ -13,11 +13,9 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
-import app.gamenative.ui.screen.wow.GamePath
 import app.gamenative.ui.screen.wow.WowFlavor
 import com.winlator.xserver.XKeycode
 import org.json.JSONObject
-import java.io.File
 
 /**
  * The settings screen of the second-screen pad. Everything is written to [PadSettings] as soon as it
@@ -74,11 +72,10 @@ class ExternalPadSettingsView(
                     listOf(
                         "Windows" to PadSettings.SEC_WINDOWS,
                         "1-9 0 - =" to PadSettings.SEC_NUMBERS,
-                        "F1-F12" to PadSettings.SEC_FKEYS,
+                        "Party" to PadSettings.SEC_PARTY,
                     ),
                 ),
             )
-            addView(cycleRow("F-keys", PadSettings.FKEY_COUNT, listOf("F1-F12", "F1-F6")))
             addView(toggleRow(listOf("Swap sides (windows on the right)" to PadSettings.SWAP_SIDES)))
             addView(cycleRow("Hotbar pages", PadSettings.HOTBAR_PAGE, listOf("Off", "Shift + number", "Ctrl + number", "Alt + number")))
         }
@@ -88,32 +85,20 @@ class ExternalPadSettingsView(
             addView(sliderRow("Label size", PadSettings.LABEL_SCALE, 80, 140) { "$it%" })
             addView(cycleRow("Haptics", PadSettings.HAPTICS, listOf("Off", "Light", "Normal", "Strong")))
             addView(sliderRow("Double-tap lock", PadSettings.DOUBLE_TAP_MS, 200, 600) { "$it ms" })
+            addView(cycleRow("Dim when idle", PadSettings.DIM_IDLE, listOf("Off", "After 15 s", "After 30 s", "After 1 min", "After 2 min")))
+            addView(sliderRow("Dim amount", PadSettings.DIM_AMOUNT, 50, 95) { "$it%" })
+            addView(note("When dimmed, the first tap only wakes the pad and doesn't press anything."))
         }
         section("Trackpad") {
             addView(sliderRow("Speed", PadSettings.TP_SPEED, 1, 20) { tenths(it) })
             addView(sliderRow("Acceleration", PadSettings.TP_ACCEL, 10, 30) { tenths(it) })
             addView(toggleRow(listOf("Tap to click" to PadSettings.TP_TAP)))
         }
-        section("Right-stick cursor (R3)") {
-            addView(toggleRow(listOf("R3 toggles cursor mode" to PadSettings.R3_TOGGLE)))
-            addView(sliderRow("Base speed", PadSettings.STICK_BASE, 5, 30) { tenths(it) })
-            addView(sliderRow("Max speed", PadSettings.STICK_MAX, 10, 50) { tenths(it) })
-            addView(sliderRow("Ramp starts at", PadSettings.STICK_RAMP, 50, 99) { "$it%" })
+        section("Controller") {
             addView(sliderRow("Stick deadzone", PadSettings.STICK_DEADZONE, 5, 40) { "$it%" })
-            addView(cycleRow("A / B in cursor mode", PadSettings.AB_MODE, listOf("Off", "A left, B right", "A right, B left")))
-            addView(toggleRow(listOf("Show mode message" to PadSettings.MODE_MESSAGE)))
         }
         section("Game and app") {
             addView(flavorRow())
-            val status = note("")
-            addView(
-                rowOf(
-                    button("Write gamepad cursor lines to Config.wtf") {
-                        status.text = writeGamepadConfig()
-                    },
-                ),
-            )
-            addView(status)
         }
         section("Remap buttons") {
             addView(rowOf(button("Choose a button to remap") { showRemap() }))
@@ -408,36 +393,6 @@ class ExternalPadSettingsView(
         "MINUS" -> "-"
         "EQUAL" -> "="
         else -> n.lowercase().replaceFirstChar { it.uppercase() }.takeIf { n.length > 1 } ?: n
-    }
-
-    /**
-     * Makes sure the three cursor lines are in the current client's Config.wtf. WoW reads that file
-     * when it starts, so this applies from the next launch.
-     */
-    private fun writeGamepadConfig(): String {
-        val flavor = WowFlavor.current
-        val file = File(File(GamePath.load(context)), "${flavor.dir}/WTF/Config.wtf")
-        if (!file.exists()) return "No Config.wtf for ${flavor.label} yet. Launch the game once first."
-        return runCatching {
-            val wanted = linkedMapOf(
-                "GamePadCursorAutoEnable" to "\"0\"",
-                "GamePadCursorLeftClick" to "\"PAD1\"",
-                "GamePadCursorRightClick" to "\"PAD2\"",
-            )
-            val seen = mutableSetOf<String>()
-            val lines = file.readLines().map { line ->
-                val key = line.takeIf { it.startsWith("SET ", ignoreCase = true) }?.removePrefix("SET ")?.trim()?.substringBefore(' ')
-                val match = wanted.keys.firstOrNull { it.equals(key, ignoreCase = true) }
-                if (match != null) {
-                    seen.add(match)
-                    "SET $match ${wanted.getValue(match)}"
-                } else {
-                    line
-                }
-            } + wanted.filterKeys { it !in seen }.map { (k, v) -> "SET $k $v" }
-            file.writeText(lines.joinToString("\n") + "\n")
-            "Written for ${flavor.label}. Applies next launch."
-        }.getOrElse { "Couldn't write Config.wtf: ${it.message}" }
     }
 
     private companion object {

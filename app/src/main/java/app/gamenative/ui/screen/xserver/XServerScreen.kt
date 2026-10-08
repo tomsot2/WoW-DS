@@ -2373,13 +2373,6 @@ fun XServerScreen(
                         gyroStickMixer = { binding, isDown, offset, sourceKeyCode ->
                             updatePhysicalStickAndGetMixedValue(binding, isDown, offset, sourceKeyCode)
                         },
-                        onRightStickMouseModeChanged = { mouseMode ->
-                            if (PadSettings.bool(PadSettings.MODE_MESSAGE)) {
-                                SnackbarManager.showTop(
-                                    if (mouseMode) "Right stick: cursor" else "Right stick: camera",
-                                )
-                            }
-                        },
                     )
                     radialMenuCoordinator?.bindPhysicalControllerHandler(physicalControllerHandler)
 

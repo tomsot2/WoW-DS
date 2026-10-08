@@ -25,9 +25,8 @@ object PadSettings {
     const val MOD_ALT = "mod_alt"
     const val SEC_WINDOWS = "sec_windows"
     const val SEC_NUMBERS = "sec_numbers"
-    const val SEC_FKEYS = "sec_fkeys"
+    const val SEC_PARTY = "sec_fkeys"
     const val SWAP_SIDES = "swap_sides"
-    const val FKEY_COUNT = "fkey_count"
     const val MUTED = "muted_borders"
     const val EMPHASIS = "number_emphasis"
     const val LABEL_SCALE = "label_scale"
@@ -37,13 +36,12 @@ object PadSettings {
     const val TP_SPEED = "trackpad_speed"
     const val TP_ACCEL = "trackpad_accel"
     const val TP_TAP = "trackpad_tap"
-    const val STICK_BASE = "stick_base"
-    const val STICK_MAX = "stick_max"
-    const val STICK_RAMP = "stick_ramp"
     const val STICK_DEADZONE = "stick_deadzone"
-    const val AB_MODE = "ab_mode"
-    const val R3_TOGGLE = "r3_toggle"
-    const val MODE_MESSAGE = "mode_message"
+    const val DIM_IDLE = "dim_idle"
+    const val DIM_AMOUNT = "dim_amount"
+
+    /** Choices for [DIM_IDLE], in seconds. 0 never dims. */
+    val DIM_IDLE_SECONDS = listOf(0, 15, 30, 60, 120)
 
     /** Every window button the pad can show. Each has an on/off setting, on by default. */
     val WINDOW_LABELS = listOf(
@@ -60,9 +58,8 @@ object PadSettings {
         MOD_ALT to true,
         SEC_WINDOWS to true,
         SEC_NUMBERS to true,
-        SEC_FKEYS to true,
+        SEC_PARTY to true,
         SWAP_SIDES to false,
-        FKEY_COUNT to 0,
         MUTED to 55,
         EMPHASIS to 100,
         LABEL_SCALE to 100,
@@ -72,13 +69,9 @@ object PadSettings {
         TP_SPEED to 7,
         TP_ACCEL to 10,
         TP_TAP to true,
-        STICK_BASE to 10,
-        STICK_MAX to 25,
-        STICK_RAMP to 90,
         STICK_DEADZONE to 15,
-        AB_MODE to 1,
-        R3_TOGGLE to true,
-        MODE_MESSAGE to true,
+        DIM_IDLE to 2,
+        DIM_AMOUNT to 80,
     )
         .apply { WINDOW_LABELS.forEach { put(windowKey(it), true) } }
 
@@ -120,10 +113,9 @@ object PadSettings {
     val doubleTapMs: Long get() = int(DOUBLE_TAP_MS).toLong()
     val trackpadSensitivity: Float get() = int(TP_SPEED) / 10f
     val trackpadAcceleration: Float get() = int(TP_ACCEL) / 10f
-    val stickBaseSpeed: Float get() = int(STICK_BASE) / 10f
-    val stickMaxSpeed: Float get() = int(STICK_MAX) / 10f
-    val stickRampStart: Float get() = int(STICK_RAMP) / 100f
     val stickDeadzone: Float get() = int(STICK_DEADZONE) / 100f
+    val dimIdleMs: Long get() = DIM_IDLE_SECONDS.getOrElse(int(DIM_IDLE)) { 0 } * 1000L
+    val dimAmount: Float get() = int(DIM_AMOUNT) / 100f
 
     /** Haptics level: 0 off, 1 light, 2 normal, 3 strong. */
     fun haptic(view: View) {
