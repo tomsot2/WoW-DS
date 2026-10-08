@@ -35,8 +35,8 @@ enum class WowFlavor(
         defaultFolder = "World of Warcraft",
     ),
     CLASSIC_ERA(
-        label = "Classic Era",
-        subtitle = "CLASSIC ERA (ARM64 NATIVE)",
+        label = "Classic",
+        subtitle = "CLASSIC (ARM64 NATIVE)",
         product = "wow_classic_era",
         dir = "_classic_era_",
         // Names are a best guess modelled on Retail's. exeFile() falls back to any ARM64 .exe in the
