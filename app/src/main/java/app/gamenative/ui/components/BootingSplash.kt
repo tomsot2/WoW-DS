@@ -58,6 +58,8 @@ fun BootingSplash(
     visible: Boolean = true,
     text: String = "Initializing...",
     progress: Float = -1f,
+    /** Which client is starting (Forever, Retail or Classic). Shown under the title when set. */
+    flavor: String? = null,
     onAbort: (() -> Unit)? = null,
 ) {
     if (visible && onAbort != null) {
@@ -148,6 +150,17 @@ fun BootingSplash(
                         ),
                     ),
                 )
+
+                if (flavor != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = flavor.uppercase(),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 6.sp,
+                        color = WowGold,
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(28.dp))
 

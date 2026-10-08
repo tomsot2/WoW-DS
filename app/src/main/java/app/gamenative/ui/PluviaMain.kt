@@ -1,5 +1,6 @@
 package app.gamenative.ui
 
+import app.gamenative.ui.screen.wow.WowFlavor
 import android.content.Context
 import android.app.Activity
 import android.content.Intent
@@ -303,9 +304,11 @@ fun PluviaMain(
             }
 
             Box(modifier = Modifier.zIndex(10f)) {
+                val launchFlavor = WowFlavor.load(context)
                 BootingSplash(
                     visible = state.showBootingSplash || initialSplash,
-                    text = if (state.showBootingSplash) state.bootingSplashText else "Booting into World of Warcraft...",
+                    text = if (state.showBootingSplash) state.bootingSplashText else "Booting into ${launchFlavor.gameName}...",
+                    flavor = launchFlavor.shortName,
                     onAbort = {
                         initialSplash = false
                         preLaunchJob?.cancel()

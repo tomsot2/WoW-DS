@@ -1,5 +1,11 @@
 package app.gamenative.ui.screen.wow
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import app.gamenative.ui.theme.WowCream
+import app.gamenative.ui.theme.WowFrame
+import app.gamenative.ui.theme.WowGold
+import app.gamenative.ui.theme.WowStoneTop
 import android.content.Context
 import android.util.Base64
 import androidx.compose.foundation.layout.Column
@@ -95,6 +101,11 @@ fun BattleNetCredentialDialog(
     }
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = WowStoneTop,
+        titleContentColor = WowGold,
+        textContentColor = WowCream,
+        shape = RoundedCornerShape(10.dp),
+        modifier = Modifier.border(3.dp, WowFrame, RoundedCornerShape(10.dp)),
         title = { Text("Battle.net login") },
         text = {
             Column {

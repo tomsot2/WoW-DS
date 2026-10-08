@@ -49,6 +49,16 @@ enum class WowFlavor(
 
     val exeName get() = exeNames.first()
 
+    /** Short name for the launch screens: Forever, Retail or Classic. */
+    val shortName get() = when (this) {
+        FOREVER -> "Forever"
+        RETAIL -> "Retail"
+        CLASSIC_ERA -> "Classic"
+    }
+
+    /** Full name shown while the game boots. */
+    val gameName get() = "World of Warcraft $shortName"
+
     /**
      * The ARM64 client in this flavor's folder. Blizzard's exe names differ per product, so after
      * the known names this falls back to any ARM64 .exe the CDN download put there.

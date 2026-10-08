@@ -8,6 +8,18 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
+import app.gamenative.ui.theme.WowCream
+import app.gamenative.ui.theme.WowCrimsonBottom
+import app.gamenative.ui.theme.WowCrimsonTop
+import app.gamenative.ui.theme.WowFrame
+import app.gamenative.ui.theme.WowFrameInner
+import app.gamenative.ui.theme.WowStoneBottom
+import app.gamenative.ui.theme.WowStoneTop
+import app.gamenative.ui.theme.WowTitle
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -212,7 +224,7 @@ fun WoWForeverScreen(
                         scope.launch(Dispatchers.Main) { statusText = msg }
                     }
                 }
-                statusText = "Booting into World of Warcraft..."
+                statusText = "Booting into ${flavor.gameName}..."
                 onLaunch(containerId)
             } catch (e: CancellationException) {
                 throw e
@@ -365,16 +377,19 @@ fun WoWForeverScreen(
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Serif,
-                    letterSpacing = 3.sp,
-                    color = Color(0xFFF0E6D2)
+                    letterSpacing = 5.sp,
+                    color = WowTitle,
                 )
                 Text(
                     text = flavor.subtitle,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp,
-                    color = WowGold
+                    fontFamily = FontFamily.Serif,
+                    letterSpacing = 3.sp,
+                    color = WowFrame,
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                WowDivider()
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(text = "${gpu.edition} Edition", fontSize = 11.sp, color = WowSubtle)
                 Spacer(modifier = Modifier.height(12.dp))
@@ -395,13 +410,7 @@ fun WoWForeverScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .border(1.dp, Color(0xFF2A3C54), RoundedCornerShape(16.dp)),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF131D2E).copy(alpha = 0.85f)),
-                shape = RoundedCornerShape(16.dp)
-            ) {
+            WowPanel {
                 Column(modifier = Modifier.padding(20.dp)) {
                     SectionTitle("ENVIRONMENT READINESS", WowGold)
                     Spacer(modifier = Modifier.height(14.dp))
@@ -440,7 +449,7 @@ fun WoWForeverScreen(
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = Color(0xFF1E2D44))
+                    HorizontalDivider(color = WowFrameInner)
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(text = "Target Path: $gamePath", fontSize = 11.sp, color = WowSubtle, maxLines = 2)
@@ -454,13 +463,7 @@ fun WoWForeverScreen(
 
             versionStatus?.takeIf { it.isOutdated }?.let { version ->
                 Spacer(modifier = Modifier.height(16.dp))
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth(0.9f)
-                        .border(1.dp, Color(0xFFE53E3E).copy(alpha = 0.6f), RoundedCornerShape(16.dp)),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2D1515).copy(alpha = 0.85f)),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
+                WowPanel(accent = Color(0xFFB13A2A), innerTop = Color(0xFF2A130F), innerBottom = Color(0xFF170A08)) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Warning, contentDescription = null, tint = WowError, modifier = Modifier.size(20.dp))
@@ -478,7 +481,7 @@ fun WoWForeverScreen(
                         Text(
                             text = "Tap Update below to download the latest files directly from Blizzard's CDN over Wi-Fi.",
                             fontSize = 11.sp,
-                            color = Color(0xFFCBD5E1)
+                            color = WowCream
                         )
                     }
                 }
@@ -486,13 +489,7 @@ fun WoWForeverScreen(
 
             appUpdate?.let { update ->
                 Spacer(modifier = Modifier.height(16.dp))
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth(0.9f)
-                        .border(1.dp, WowGold.copy(alpha = 0.6f), RoundedCornerShape(16.dp)),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E2838).copy(alpha = 0.85f)),
-                    shape = RoundedCornerShape(16.dp),
-                ) {
+                WowPanel {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Refresh, contentDescription = null, tint = WowGold, modifier = Modifier.size(20.dp))
@@ -503,7 +500,7 @@ fun WoWForeverScreen(
                         Text(
                             text = "A new release is available on GitHub. Tap below to view notes and update.",
                             fontSize = 12.sp,
-                            color = Color(0xFFCBD5E1),
+                            color = WowCream,
                             lineHeight = 16.sp,
                         )
                         Spacer(modifier = Modifier.height(10.dp))
@@ -543,7 +540,7 @@ fun WoWForeverScreen(
                             else -> "Checking for game updates..."
                         },
                         fontSize = 13.sp,
-                        color = Color(0xFFE2E8F0),
+                        color = WowCream,
                         textAlign = TextAlign.Center
                     )
                 } else {
@@ -551,7 +548,8 @@ fun WoWForeverScreen(
                         OutlinedButton(
                             onClick = { folderPicker.launch(null) },
                             modifier = Modifier.fillMaxWidth(0.85f).height(48.dp),
-                            shape = RoundedCornerShape(14.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(2.dp, WowFrame),
                         ) {
                             Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(20.dp), tint = WowGold)
                             Spacer(modifier = Modifier.width(10.dp))
@@ -573,7 +571,8 @@ fun WoWForeverScreen(
                                 onClick = ::launchGame,
                                 enabled = canPlay,
                                 modifier = Modifier.fillMaxWidth(0.85f).height(48.dp),
-                                shape = RoundedCornerShape(14.dp)
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(2.dp, Color(0xFFB13A2A)),
                             ) {
                                 Text(text = "LAUNCH ANYWAY (OUTDATED)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = WowError)
                             }
@@ -585,7 +584,7 @@ fun WoWForeverScreen(
                             onClick = { StorageUtils.requestManageExternalStoragePermission(context) },
                         )
                         else -> PrimaryButton(
-                            text = if (files.isWrongGame) "${flavor.label.uppercase()} INSTALL REQUIRED" else "PLAY WORLD OF WARCRAFT",
+                            text = if (files.isWrongGame) "${flavor.label.uppercase()} INSTALL REQUIRED" else "PLAY ${flavor.shortName.uppercase()}",
                             icon = Icons.Default.PlayArrow,
                             enabled = canPlay,
                             onClick = ::launchGame,
@@ -646,7 +645,7 @@ fun WoWForeverScreen(
                 Text(
                     text = "Android requires 'All files access' for WoW Forever to read and update game files in this directory.\n\nPlease enable 'Allow access to manage all files' on the next screen.",
                     fontSize = 13.sp,
-                    color = Color(0xFFE2E8F0),
+                    color = WowCream,
                     lineHeight = 18.sp
                 )
             },
@@ -667,8 +666,9 @@ fun WoWForeverScreen(
                     Text("CANCEL", color = WowMuted)
                 }
             },
-            containerColor = Color(0xFF1B2838),
-            shape = RoundedCornerShape(16.dp),
+            containerColor = WowStoneTop,
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.border(3.dp, WowFrame, RoundedCornerShape(10.dp)),
         )
     }
 
@@ -692,7 +692,7 @@ fun WoWForeverScreen(
                             Text(
                                 text = renderReleaseNotes(update.notes),
                                 fontSize = 12.sp,
-                                color = Color(0xFFCBD5E1),
+                                color = WowCream,
                                 lineHeight = 16.sp,
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -741,8 +741,9 @@ fun WoWForeverScreen(
                         }
                     }
                 },
-                containerColor = Color(0xFF1B2838),
-                shape = RoundedCornerShape(16.dp),
+                containerColor = WowStoneTop,
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.border(3.dp, WowFrame, RoundedCornerShape(10.dp)),
             )
         }
     }
@@ -762,7 +763,7 @@ fun WoWForeverScreen(
                 Text(
                     text = "Android requires permission to install apps from WoW Forever.\n\nPlease enable 'Allow from this source' on the next screen.",
                     fontSize = 13.sp,
-                    color = Color(0xFFE2E8F0),
+                    color = WowCream,
                     lineHeight = 18.sp,
                 )
             },
@@ -784,8 +785,9 @@ fun WoWForeverScreen(
                     Text("CANCEL", color = WowMuted)
                 }
             },
-            containerColor = Color(0xFF1B2838),
-            shape = RoundedCornerShape(16.dp),
+            containerColor = WowStoneTop,
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.border(3.dp, WowFrame, RoundedCornerShape(10.dp)),
         )
     }
 }
@@ -851,21 +853,66 @@ object GamePath {
 }
 
 @Composable
+private fun WowDivider() {
+    Row(modifier = Modifier.fillMaxWidth(0.5f), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f).height(1.dp).background(Brush.horizontalGradient(listOf(Color.Transparent, WowFrame))))
+        Box(Modifier.padding(horizontal = 8.dp).size(7.dp).rotate(45f).background(WowFrame))
+        Box(Modifier.weight(1f).height(1.dp).background(Brush.horizontalGradient(listOf(WowFrame, Color.Transparent))))
+    }
+}
+
+/** A dark stone panel in a gold frame. [accent] recolors the frame, e.g. red for a warning. */
+@Composable
+private fun WowPanel(
+    accent: Color = WowFrame,
+    innerTop: Color = WowStoneTop,
+    innerBottom: Color = WowStoneBottom,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth(0.9f)
+            .border(3.dp, accent, RoundedCornerShape(10.dp))
+            .padding(3.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(innerTop, innerBottom)), RoundedCornerShape(7.dp))
+                .border(1.dp, WowFrameInner, RoundedCornerShape(7.dp)),
+            content = content,
+        )
+    }
+}
+
+@Composable
 private fun FlavorSelector(selected: WowFlavor, enabled: Boolean, onSelect: (WowFlavor) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        WowFlavor.entries.forEach { flavor ->
+    val entries = WowFlavor.entries
+    Row(modifier = Modifier.alpha(if (enabled) 1f else 0.5f)) {
+        entries.forEachIndexed { index, flavor ->
             val isSelected = flavor == selected
-            OutlinedButton(
-                onClick = { onSelect(flavor) },
-                enabled = enabled,
-                shape = RoundedCornerShape(20.dp),
-                border = BorderStroke(1.dp, if (isSelected) WowGold else Color(0xFF2A3C54)),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = if (isSelected) WowBronze.copy(alpha = 0.35f) else Color.Transparent,
-                    contentColor = if (isSelected) Color.White else WowMuted,
-                ),
+            val shape = when (index) {
+                0 -> RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp)
+                entries.lastIndex -> RoundedCornerShape(topEnd = 8.dp, bottomEnd = 8.dp)
+                else -> RoundedCornerShape(0.dp)
+            }
+            val faces = if (isSelected) listOf(WowBronze, Color(0xFF462C0C)) else listOf(Color(0xFF28201A), Color(0xFF16110E))
+            Box(
+                modifier = Modifier
+                    .background(Brush.verticalGradient(faces), shape)
+                    .border(2.dp, if (isSelected) WowFrame else WowFrameInner, shape)
+                    .clickable(enabled = enabled) { onSelect(flavor) }
+                    .padding(horizontal = 18.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Text(flavor.label.uppercase(), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text(
+                    flavor.label.uppercase(),
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Serif,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    color = if (isSelected) Color(0xFFFFECB4) else WowMuted,
+                )
             }
         }
     }
@@ -873,44 +920,63 @@ private fun FlavorSelector(selected: WowFlavor, enabled: Boolean, onSelect: (Wow
 
 @Composable
 private fun SectionTitle(text: String, color: Color) {
-    Text(text = text, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = color)
+    Text(
+        text = text,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        fontFamily = FontFamily.Serif,
+        letterSpacing = 3.sp,
+        color = color,
+    )
 }
 
 @Composable
 private fun PrimaryButton(text: String, icon: ImageVector, enabled: Boolean, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier.fillMaxWidth(0.85f).height(56.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = WowBronze, contentColor = Color.White),
-        shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(10.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth(0.85f)
+            .height(56.dp)
+            .alpha(if (enabled) 1f else 0.5f)
+            .background(Brush.verticalGradient(listOf(WowCrimsonTop, WowCrimsonBottom)), shape)
+            .border(3.dp, WowGold, shape)
+            .clickable(enabled = enabled, onClick = onClick),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
+        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = Color(0xFFFFECB4))
         Spacer(modifier = Modifier.width(10.dp))
-        Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Text(
+            text = text,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Serif,
+            letterSpacing = 2.sp,
+            color = Color(0xFFFFECB4),
+        )
     }
 }
 
 @Composable
 private fun LinkButton(text: String, icon: ImageVector, onClick: () -> Unit) {
     TextButton(onClick = onClick) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = WowMuted)
+        Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = WowFrame)
         Spacer(modifier = Modifier.width(6.dp))
-        Text(text, fontSize = 12.sp, color = WowMuted)
+        Text(text, fontSize = 12.sp, color = WowFrame)
     }
 }
 
 @Composable
 private fun CheckItem(label: String, ready: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            imageVector = if (ready) Icons.Default.CheckCircle else Icons.Default.Warning,
-            contentDescription = null,
-            tint = if (ready) Color(0xFF48BB78) else Color(0xFFED8936),
-            modifier = Modifier.size(18.dp)
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .background(if (ready) Color(0xFF4F9A3C) else Color(0xFFB13A2A), CircleShape)
+                .border(2.dp, if (ready) Color(0xFF1D3A16) else Color(0xFF4A1710), CircleShape),
         )
         Spacer(modifier = Modifier.width(10.dp))
-        Text(text = label, fontSize = 13.sp, color = if (ready) Color(0xFFCBD5E1) else Color(0xFFED8936))
+        Text(text = label, fontSize = 13.sp, color = if (ready) WowCream else Color(0xFFE0A050))
     }
 }
 
