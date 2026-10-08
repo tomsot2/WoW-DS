@@ -4,6 +4,14 @@ All notable changes to WoW-DS are listed here. The format follows [Keep a Change
 
 Each version's section becomes its GitHub release notes, which the app also shows in its update dialog.
 
+## [1.2.0]
+
+### Added
+- **Pad layout editor** in the pad's settings. The pad is now columns of button groups (Windows, Modifiers, Markers, Commands, Party) that you can rearrange: tap a group on the small map of the pad, then move it with the arrows. ◀ ▶ step it into a column of its own and then into the next column over, so any group can go anywhere, including either edge. ▲ ▼ move it within its column. Each group can also be shown or hidden there.
+
+### Changed
+- **Swap sides** is replaced by the layout editor. If you had it on, your pad starts out mirrored.
+
 ## [1.1.0]
 
 The bottom-screen pad now covers what's awkward with WoW's gamepad controls: chat, raid markers and the odd command.
@@ -49,4 +57,5 @@ WoW-DS is a new app (`app.wowds`). It installs next to the AYN Thor WoW Launcher
 - F6-F12 and the F1-F6/F1-F12 setting.
 
 [1.0.0]: https://github.com/tomsot2/WoW-DS/releases/tag/v1.0.0
+[1.2.0]: https://github.com/tomsot2/WoW-DS/releases/tag/v1.2.0
 [1.1.0]: https://github.com/tomsot2/WoW-DS/releases/tag/v1.1.0

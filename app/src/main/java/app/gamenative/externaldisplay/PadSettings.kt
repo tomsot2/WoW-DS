@@ -249,6 +249,98 @@ object PadSettings {
         version++
     }
 
+    // Pad layout: the groups of buttons arranged in columns, left to right, each column a stack of
+    // groups top to bottom. Stored as a JSON array of arrays of group ids.
+
+    const val LAYOUT = "layout"
+    const val G_WINDOWS = "windows"
+    const val G_MODIFIERS = "modifiers"
+    const val G_MARKERS = "markers"
+    const val G_COMMANDS = "commands"
+    const val G_PARTY = "party"
+    val GROUPS = listOf(G_WINDOWS, G_MODIFIERS, G_MARKERS, G_COMMANDS, G_PARTY)
+    val GROUP_NAMES = mapOf(
+        G_WINDOWS to "Windows", G_MODIFIERS to "Modifiers", G_MARKERS to "Markers", G_COMMANDS to "Commands", G_PARTY to "Party",
+    )
+
+    /** The on/off setting for a group. Modifiers have none here: they follow "Modifier keys shown". */
+    fun groupShownKey(group: String): String? = when (group) {
+        G_WINDOWS -> SEC_WINDOWS
+        G_MARKERS -> SEC_MARKERS
+        G_COMMANDS -> SEC_COMMANDS
+        G_PARTY -> SEC_PARTY
+        else -> null
+    }
+
+    /** Windows on the left, then modifiers, markers and commands, then the party column on the right edge. */
+    private fun defaultLayout(): List<List<String>> {
+        val layout = listOf(listOf(G_WINDOWS), listOf(G_MODIFIERS, G_MARKERS, G_COMMANDS), listOf(G_PARTY))
+        // Older versions had a "Swap sides" setting; honour it until a layout is saved.
+        return if (bool(SWAP_SIDES)) layout.reversed() else layout
+    }
+
+    /** The saved layout, repaired so that every group appears exactly once and no column is empty. */
+    fun layout(): List<List<String>> {
+        val saved = runCatching {
+            val array = org.json.JSONArray(prefs?.getString(LAYOUT, null) ?: return defaultLayout())
+            (0 until array.length()).map { c ->
+                val column = array.getJSONArray(c)
+                (0 until column.length()).map { column.getString(it) }
+            }
+        }.getOrNull() ?: return defaultLayout()
+        val seen = mutableSetOf<String>()
+        val columns = saved.map { column -> column.filter { it in GROUPS && seen.add(it) } }.filter { it.isNotEmpty() }.toMutableList()
+        val missing = GROUPS.filter { it !in seen }
+        if (missing.isNotEmpty()) {
+            if (columns.isEmpty()) columns += missing else columns[columns.lastIndex] = columns.last() + missing
+        }
+        return columns
+    }
+
+    private fun saveLayout(columns: List<List<String>>) {
+        val json = org.json.JSONArray(columns.filter { it.isNotEmpty() }.map { org.json.JSONArray(it) })
+        prefs?.edit()?.putString(LAYOUT, json.toString())?.apply()
+        version++
+    }
+
+    /**
+     * Moves a group one step left ([direction] -1) or right (+1). A group sharing a column first steps
+     * out into a column of its own on that side; a group alone in its column joins the next column over
+     * (at the bottom). Repeating it walks the group through every spot, out to either edge.
+     */
+    fun moveGroupSideways(group: String, direction: Int) {
+        val columns = layout().map { it.toMutableList() }.toMutableList()
+        val c = columns.indexOfFirst { group in it }
+        if (c < 0) return
+        if (columns[c].size > 1) {
+            columns[c].remove(group)
+            columns.add(if (direction < 0) c else c + 1, mutableListOf(group))
+        } else {
+            val next = c + direction
+            if (next !in columns.indices) return
+            columns[next].add(group)
+            columns.removeAt(c)
+        }
+        saveLayout(columns)
+    }
+
+    /** Moves a group up (-1) or down (+1) within its column. */
+    fun moveGroupVertically(group: String, direction: Int) {
+        val columns = layout().map { it.toMutableList() }
+        val column = columns.firstOrNull { group in it } ?: return
+        val i = column.indexOf(group)
+        val j = i + direction
+        if (j !in column.indices) return
+        column[i] = column[j]
+        column[j] = group
+        saveLayout(columns)
+    }
+
+    fun resetLayout() {
+        prefs?.edit()?.remove(LAYOUT)?.remove(SWAP_SIDES)?.apply()
+        version++
+    }
+
     fun setAction(listKey: String, index: Int, action: PadAction) {
         val list = actions(listKey).toMutableList()
         list[index] = action
@@ -266,6 +358,7 @@ object PadSettings {
             DEFAULTS.keys.forEach { remove(it) }
             ACTION_DEFAULTS.keys.forEach { remove(it) }
             ORDER_KEYS.forEach { remove(it) }
+            remove(LAYOUT)
             remove(REMAP)
         }?.apply()
         version++
@@ -279,6 +372,7 @@ object PadSettings {
         put(REMAP, remapJson())
         ACTION_DEFAULTS.keys.forEach { key -> put(key, org.json.JSONArray(actions(key).map { it.toJson() })) }
         ORDER_KEYS.forEach { key -> put(key, org.json.JSONArray(order(key))) }
+        put(LAYOUT, org.json.JSONArray(layout().map { org.json.JSONArray(it) }))
     }
 
     /** Applies a [snapshot]. Unknown or mistyped entries are ignored. */
@@ -292,6 +386,7 @@ object PadSettings {
         json.optJSONObject(REMAP)?.let { editor.putString(REMAP, it.toString()) }
         ACTION_DEFAULTS.keys.forEach { key -> json.optJSONArray(key)?.let { editor.putString(key, it.toString()) } }
         ORDER_KEYS.forEach { key -> json.optJSONArray(key)?.let { editor.putString(key, it.toString()) } }
+        json.optJSONArray(LAYOUT)?.let { editor.putString(LAYOUT, it.toString()) }
         editor.apply()
         version++
     }

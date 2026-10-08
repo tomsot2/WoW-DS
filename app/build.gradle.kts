@@ -73,8 +73,8 @@ android {
 
         // A release is published by pushing the tag "v" + versionName (see .github/workflows/release.yml).
         // Bump both numbers for every release; the updater offers any release whose tag is newer than this.
-        versionCode = 110
-        versionName = "1.1.0"
+        versionCode = 120
+        versionName = "1.2.0"
         buildConfigField("String", "UPDATE_REPO", "\"$updateRepo\"")
 
         buildConfigField("boolean", "GOLD", "false")

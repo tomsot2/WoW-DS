@@ -66,7 +66,9 @@ class ExternalPadSettingsView(
                 )
             }
         }
-        section("Pad sections shown") {
+        section("Pad layout") {
+            addView(note("Turn groups on or off, and move them around the pad."))
+            addView(rowOf(button("Edit layout") { showLayoutEditor(PadSettings.G_PARTY) }))
             addView(
                 toggleRow(
                     listOf(
@@ -77,7 +79,6 @@ class ExternalPadSettingsView(
                     ),
                 ),
             )
-            addView(toggleRow(listOf("Swap sides (windows on the right)" to PadSettings.SWAP_SIDES)))
             addView(note("To move a window, marker or command button, hold it until it buzzes, then drag it onto another button of the same kind to swap them."))
             addView(rowOf(button("Reset button positions") { b ->
                 PadSettings.resetOrders()
@@ -229,6 +230,97 @@ class ExternalPadSettingsView(
                         filler = 6 - chunk.size,
                     ),
                 )
+            }
+        }
+    }
+
+    // Pad layout
+
+    /**
+     * A small map of the pad: its columns side by side, each with its groups top to bottom. Tap a group
+     * to select it, then move it with the arrows or switch it on or off. The pad itself changes when
+     * settings close.
+     */
+    private fun showLayoutEditor(selected: String) {
+        content.removeAllViews()
+        val layout = PadSettings.layout()
+        fun shown(group: String) = PadSettings.groupShownKey(group)?.let { PadSettings.bool(it) }
+            ?: listOf(PadSettings.MOD_SHIFT, PadSettings.MOD_CTRL, PadSettings.MOD_ALT).any { PadSettings.bool(it) }
+
+        section("Pad layout") {
+            addView(
+                note(
+                    "Tap a group, then move it. ◀ ▶ take it out into a column of its own, then into the next " +
+                        "column over, so it can reach any spot, including either edge. ▲ ▼ move it within its column.",
+                ),
+            )
+            addView(rowOf(button("Back") { showMain() }, button("Reset layout") {
+                PadSettings.resetLayout()
+                showLayoutEditor(selected)
+            }))
+        }
+        section("Pad") {
+            // The map: one box per column, as wide as the column will be on the pad.
+            addView(
+                LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    setPadding(dp(4), dp(4), dp(4), dp(4))
+                    layout.forEach { column ->
+                        addView(
+                            LinearLayout(context).apply {
+                                orientation = LinearLayout.VERTICAL
+                                background = theme.groupBackground(density, strong = false)
+                                setPadding(dp(2), dp(2), dp(2), dp(2))
+                                val wide = if (column.all { it == PadSettings.G_PARTY }) 0.6f else 1f
+                                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, wide)
+                                    .apply { setMargins(dp(3), 0, dp(3), 0) }
+                                column.forEach { group ->
+                                    val name = PadSettings.GROUP_NAMES.getValue(group)
+                                    addView(
+                                        button(if (shown(group)) name else "$name (off)", active = group == selected) {
+                                            showLayoutEditor(group)
+                                        }.apply {
+                                            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(52))
+                                                .apply { setMargins(dp(2), dp(2), dp(2), dp(2)) }
+                                            if (!shown(group)) alpha = 0.5f
+                                        },
+                                    )
+                                }
+                            },
+                        )
+                    }
+                },
+            )
+        }
+        section("Move ${PadSettings.GROUP_NAMES.getValue(selected)}") {
+            addView(
+                rowOf(
+                    button("◀") {
+                        PadSettings.moveGroupSideways(selected, -1)
+                        showLayoutEditor(selected)
+                    },
+                    button("▲") {
+                        PadSettings.moveGroupVertically(selected, -1)
+                        showLayoutEditor(selected)
+                    },
+                    button("▼") {
+                        PadSettings.moveGroupVertically(selected, 1)
+                        showLayoutEditor(selected)
+                    },
+                    button("▶") {
+                        PadSettings.moveGroupSideways(selected, 1)
+                        showLayoutEditor(selected)
+                    },
+                ),
+            )
+            val key = PadSettings.groupShownKey(selected)
+            if (key != null) {
+                addView(rowOf(button(if (PadSettings.bool(key)) "Shown (tap to hide)" else "Hidden (tap to show)", active = PadSettings.bool(key)) {
+                    PadSettings.set(key, !PadSettings.bool(key))
+                    showLayoutEditor(selected)
+                }))
+            } else {
+                addView(note("The modifiers show when at least one is switched on under \"Modifier keys shown\"."))
             }
         }
     }

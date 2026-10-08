@@ -109,7 +109,7 @@ On the AYN Thor the bottom screen shows a touch pad while you play. It's built t
 - **Keyboard:** a full US QWERTY keyboard that fills the pad. The default **Wide letters** layout keeps the usual stagger but moves Tab, Caps, Shift, Enter, Backspace and the symbol keys into rows of their own, so the letters get the full width of the Thor's narrow screen. A **Standard** layout is in settings. Shift applies to the next key; there are also Caps Lock, Esc and arrow keys.
 - **Trackpad:** a touch mouse with Shift, Ctrl and Alt always available. Drag two fingers up or down to scroll (quest log, bags, chat).
 - **Easy on the screen:** the pad dims when you're not using it, and moves a few pixels every few minutes so nothing burns into the OLED.
-- **Arrange it your way:** hold a window, marker or command button until it buzzes, then drag it onto another button of the same kind to swap them. **Reset button positions** in settings puts them back.
+- **Arrange it your way:** move whole groups with the **Pad layout** editor in settings (for example, put the party buttons at either edge), and turn any group off. Within a group, hold a window, marker or command button until it buzzes, then drag it onto another button of the same kind to swap them.
 
 ### Marker and command buttons
 
@@ -124,9 +124,10 @@ Either way, one tap is exactly one command or one key press. Nothing repeats, lo
 
 The settings page (the gear) lets you change:
 
-- which modifier keys, window buttons and pad sections (windows, markers, commands, party) are shown; the rest resize to fill the space
+- the pad layout: which groups (windows, modifiers, markers, commands, party) are shown and where they sit, in columns you arrange; the rest resize to fill the space
+- which modifier keys and window buttons are shown
 - the marker buttons, command buttons and quick phrases
-- swap left/right sides, keyboard layout, label size, haptics and double-tap lock time
+- keyboard layout, label size, haptics and double-tap lock time
 - dimming when idle (off, or after 15 s to 2 min) and how dark it goes, and burn-in protection. When dimmed, the first tap only wakes the pad
 - trackpad speed, acceleration and tap-to-click
 - controller stick deadzone

@@ -18,10 +18,9 @@ import com.winlator.xserver.XServer
 /**
  * The main second-screen pad.
  *
- * Left half: a column of window shortcuts (Map, Character, Spellbook, Talents, Skills, Quest Log,
- * Social, System).
- * Right half: the modifier buttons (see [setModifierRow]) on top; below them the 8 target marker
- * buttons and the 8 command buttons, with a party column beside them (Me, P1-P4) that sends F1-F5 to
+ * Five groups of buttons, arranged in columns as set in Pad layout ([PadSettings.layout]): window
+ * shortcuts (Map, Character, Spellbook and so on), the modifier buttons (see [setModifierRow]), the 8
+ * target marker buttons, the 8 command buttons, and the party buttons (Me, P1-P4) that send F1-F5 to
  * target yourself or a party member. The action bars themselves live on the controller (WoW's gamepad mode).
  *
  * Window and party buttons send WoW's default keys, so they work with the stock bindings and need no
@@ -47,7 +46,6 @@ class ExternalActionBarView(
     private val downKeys = mutableSetOf<XKeycode>()
     /** Modifiers held by key-type command buttons. */
     private val downModifiers = mutableSetOf<XKeycode>()
-    private val rightColumn: LinearLayout
     // Buttons that can be dragged onto each other, per order key: (id, view).
     private val dropTargets = mutableMapOf<String, MutableList<Pair<String, View>>>()
     private val modifierGroup: LinearLayout
@@ -72,80 +70,92 @@ class ExternalActionBarView(
         val pad = dp(8)
         setPadding(pad, pad, pad, pad)
 
+
         // Each group of buttons sits on its own faint backing; the command block's is the strongest.
         // Window buttons: one column up to SINGLE_COLUMN_MAX buttons, two columns beyond that.
         val windows = visibleWindows()
-        val columns = if (windows.size > SINGLE_COLUMN_MAX) windows.chunked((windows.size + 1) / 2) else listOf(windows)
-        val split = columns.size > 1
-        val leftColumn = LinearLayout(context).apply {
+        val windowColumns = if (windows.size > SINGLE_COLUMN_MAX) windows.chunked((windows.size + 1) / 2) else listOf(windows)
+        val split = windowColumns.size > 1
+        val windowGroup = LinearLayout(context).apply {
             orientation = HORIZONTAL
             isMotionEventSplittingEnabled = true
-            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, if (split) SPLIT_LEFT_WEIGHT else LEFT_WEIGHT)
-            columns.forEach { slots ->
+            windowColumns.forEach { slots ->
                 addView(
                     group(vertical = true, strong = false).apply {
-                        layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) }
+                        layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply { setMargins(dp(3), 0, dp(3), 0) }
                         slots.forEach { addView(actionRow(listOf(windowButton(it, textSp = if (split) 13f else 15f)))) }
                     },
                 )
             }
-            if (windows.isEmpty() || !PadSettings.bool(PadSettings.SEC_WINDOWS)) visibility = GONE
         }
-        modifierGroup = group(vertical = false, strong = false).apply {
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 0.7f).apply { setMargins(0, dp(3), 0, dp(3)) }
-            visibility = GONE
-        }
+        modifierGroup = group(vertical = false, strong = false).apply { visibility = GONE }
         val markerGroup = group(vertical = true, strong = false).apply {
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1.8f).apply { setMargins(0, dp(3), 0, dp(3)) }
             val markers = PadSettings.actions(PadSettings.MARKERS)
             PadSettings.displayOrder(PadSettings.MARKERS).chunked(4).forEach { row ->
                 addView(actionRow(row.map { i -> markerButton(i, markers[i]) }))
             }
-            if (!PadSettings.bool(PadSettings.SEC_MARKERS)) visibility = GONE
         }
         val commandGroup = group(vertical = true, strong = true).apply {
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 2.2f).apply { setMargins(0, dp(3), 0, dp(3)) }
             val commands = PadSettings.actions(PadSettings.COMMANDS)
             PadSettings.displayOrder(PadSettings.COMMANDS).chunked(4).forEach { row ->
                 addView(actionRow(row.map { i -> commandButton(i, commands[i]) }))
             }
-            if (!PadSettings.bool(PadSettings.SEC_COMMANDS)) visibility = GONE
         }
-        // Party buttons stack top to bottom (Me, then P1-P4, like the party frames) in a narrow column
-        // beside the markers and commands, so each button is wide and short rather than tall and thin.
+        // Party buttons stack top to bottom (Me, then P1-P4, like the party frames), so each button is
+        // wide and short rather than tall and thin.
         val partyGroup = group(vertical = true, strong = false).apply {
-            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, PARTY_WEIGHT).apply { setMargins(dp(6), dp(3), 0, dp(3)) }
             PARTY_SLOTS.forEach { addView(keyRow(listOf(it), textSp = 16f, weight = 1f, muted = true)) }
-            if (!PadSettings.bool(PadSettings.SEC_PARTY)) visibility = GONE
         }
-        val actionColumn = LinearLayout(context).apply {
-            orientation = VERTICAL
-            isMotionEventSplittingEnabled = true
-            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
-            addView(markerGroup)
-            addView(commandGroup)
-            if (markerGroup.visibility == GONE && commandGroup.visibility == GONE) visibility = GONE
-        }
-        val lowerRow = LinearLayout(context).apply {
-            orientation = HORIZONTAL
-            isMotionEventSplittingEnabled = true
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 4f)
-            addView(actionColumn)
-            addView(partyGroup)
-        }
-        rightColumn = column(RIGHT_WEIGHT).apply {
-            addView(modifierGroup)
-            addView(lowerRow)
-        }
-        // "Swap sides" puts the window column on the right.
-        if (PadSettings.bool(PadSettings.SWAP_SIDES)) {
-            addView(rightColumn)
-            addView(leftColumn)
-        } else {
-            addView(leftColumn)
-            addView(rightColumn)
+
+        val views = mapOf(
+            PadSettings.G_WINDOWS to windowGroup,
+            PadSettings.G_MODIFIERS to modifierGroup,
+            PadSettings.G_MARKERS to markerGroup,
+            PadSettings.G_COMMANDS to commandGroup,
+            PadSettings.G_PARTY to partyGroup,
+        )
+        // Modifiers are added later (setModifierRow), but whether they will be is known from the settings.
+        val shown = mapOf(
+            PadSettings.G_WINDOWS to (windows.isNotEmpty() && PadSettings.bool(PadSettings.SEC_WINDOWS)),
+            PadSettings.G_MODIFIERS to listOf(PadSettings.MOD_SHIFT, PadSettings.MOD_CTRL, PadSettings.MOD_ALT).any { PadSettings.bool(it) },
+            PadSettings.G_MARKERS to PadSettings.bool(PadSettings.SEC_MARKERS),
+            PadSettings.G_COMMANDS to PadSettings.bool(PadSettings.SEC_COMMANDS),
+            PadSettings.G_PARTY to PadSettings.bool(PadSettings.SEC_PARTY),
+        )
+        // How wide each group likes to be, and how tall when it shares a column (relative to the others).
+        val widths = mapOf(
+            PadSettings.G_WINDOWS to if (split) SPLIT_WINDOWS_WIDTH else 1f,
+            PadSettings.G_PARTY to PARTY_WIDTH,
+        )
+        val heights = mapOf(
+            PadSettings.G_WINDOWS to 4f,
+            PadSettings.G_MODIFIERS to 0.7f,
+            PadSettings.G_MARKERS to 1.8f,
+            PadSettings.G_COMMANDS to 2.2f,
+            PadSettings.G_PARTY to 2.5f,
+        )
+
+        // The groups in the player's layout (Pad layout in settings): columns left to right, each a stack.
+        // A column is as wide as its widest shown group, and is left out when none of its groups is shown.
+        PadSettings.layout().forEach { ids ->
+            val visible = ids.filter { shown.getValue(it) }
+            if (visible.isEmpty()) return@forEach
+            addView(
+                column(visible.maxOf { widths[it] ?: 1f }).apply {
+                    visible.forEach { id ->
+                        addView(
+                            views.getValue(id).apply {
+                                layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, heights.getValue(id)).apply {
+                                    setMargins(dp(3), dp(3), dp(3), dp(3))
+                                }
+                            },
+                        )
+                    }
+                },
+            )
         }
     }
+
 
     /** The window buttons to show, in the order the player arranged them: switched on in settings and present in the selected client. */
     private fun visibleWindows(): List<Slot> = PadSettings.order(PadSettings.ORDER_WINDOWS)
@@ -154,7 +164,7 @@ class ExternalActionBarView(
             PadSettings.bool(PadSettings.windowKey(slot.label)) && WowFlavor.current !in slot.hiddenIn
         }
 
-    /** Puts the modifier buttons above the action buttons. */
+    /** Puts the modifier buttons into their group. */
     fun setModifierRow(row: View) {
         (row.parent as? android.view.ViewGroup)?.removeView(row)
         row.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
@@ -392,20 +402,15 @@ class ExternalActionBarView(
         fun remappableButtons(): List<Pair<String, XKeycode>> =
             (PANELS + PARTY_SLOTS).map { it.label to it.key }
 
-        // Width split between the window-shortcut column and the F-key/number/modifier block.
-        // A smaller RIGHT_WEIGHT squeezes that block toward the right edge, within reach of a right thumb.
-        private const val LEFT_WEIGHT = 1f
-        private const val RIGHT_WEIGHT = 1f
-
-        // Width of the party column, relative to the marker/command block beside it (1).
-        private const val PARTY_WEIGHT = 0.3f
+        // Width of a column holding only the party buttons, relative to a standard column (1).
+        private const val PARTY_WIDTH = 0.3f
 
         // How long a button is held before it is picked up to be moved.
         private const val LONG_PRESS_MS = 450L
 
         // Up to this many window buttons stay in one column; more split it in two, a little wider overall.
         private const val SINGLE_COLUMN_MAX = 8
-        private const val SPLIT_LEFT_WEIGHT = 1.45f
+        private const val SPLIT_WINDOWS_WIDTH = 1.45f
 
         // WoW's default bindings for the character, spellbook and similar windows.
         private val PANELS = listOf(
