@@ -3,11 +3,19 @@
 > **A fork of [WoW Forever for Android](https://github.com/jaredgei/wow-forever-android) by [jaredgei](https://github.com/jaredgei).** The WoW launcher, the single-container setup, native ARM64 launch and the bundled runtime all come from jaredgei's project, which is itself a fork of GameNative. This fork adds Retail and Classic support, a styled launcher, a second-screen button pad with settings, controller cursor mode and a themed in-game menu for the AYN Thor. Please star and support the original.
 
 
-Play the **World of Warcraft: Forever beta** on Snapdragon Android handhelds as a normal Android app. You tap the icon, press Play, and the game runs.
+Play **World of Warcraft** on Snapdragon Android handhelds as a normal Android app, with extra work for the dual-screen **AYN Thor**. Pick **Forever**, **Retail** or **Classic**, press Play, and the game runs.
 
-This uses Blizzard's own **Windows ARM64** WoW client, so the game itself runs natively on the phone's CPU. Wine translates the Windows calls, and DXVK plus a patched Turnip Vulkan driver render the game on the Adreno GPU. Nothing is emulated as x86.
+This uses Blizzard's own **Windows ARM64** WoW clients, so the game itself runs natively on the device's CPU. Wine translates the Windows calls, and DXVK plus a patched Turnip Vulkan driver render the game on the Adreno GPU. Nothing is emulated as x86.
 
-> Unofficial community project. Not affiliated with or endorsed by Blizzard Entertainment. You need your own Battle.net account with WoW Forever beta access. This repo and its releases contain **no** Blizzard game files.
+### Highlights of this fork
+
+- **Three clients in one app:** Forever (beta), Retail and Classic, each with its own game folder, in-app updates and Play button.
+- **Thor second-screen button pad:** a touch pad on the bottom screen with a trackpad, keyboard, hotbar-style buttons, window shortcuts (Map, Character, Spellbook, Bags, Group Finder and more), modifier and F-keys, and a full settings page. See [The Thor button pad](#the-thor-button-pad).
+- **Controller mouse mode:** the right stick becomes a cursor on R3, with A/B as clicks and an adjustable speed ramp.
+- **World of Warcraft look:** a stone-and-gold launcher and in-game quick menu, with the chosen client named on the Play button and boot screen.
+- **Its own app:** package `app.aynthorwow`, so it installs next to jaredgei's original WoW Forever app, GameNative and Winlator.
+
+> Unofficial community project. Not affiliated with or endorsed by Blizzard Entertainment. You need your own Battle.net account with access to the client you want to play (the Forever beta needs beta access). This repo and its releases contain **no** Blizzard game files.
 
 ---
 
@@ -15,7 +23,7 @@ This uses Blizzard's own **Windows ARM64** WoW client, so the game itself runs n
 
 | Device | Status |
 | :--- | :--- |
-| AYN Thor (Snapdragon 8 Gen 2 / Adreno 740) | Tested, reaches the game world with controller support |
+| AYN Thor (Snapdragon 8 Gen 2 / Adreno 740) | Main target of this fork: tested with controller support and the second-screen pad |
 | Retroid Pocket 6 (Snapdragon 8 Gen 2 / Adreno 740) | Tested by the original community setup |
 | AYN Odin 2 / Mini (Snapdragon 8 Gen 2) | Expected to work |
 | AYN Odin Portal (Snapdragon 8 Elite / Adreno 830) | Supported via bundled Turnip v32 driver |
@@ -27,7 +35,7 @@ Requirements:
 - Snapdragon 8 series (Adreno 7xx or Adreno 8xx). The app bundles both the Adreno 740 driver and the Turnip v32 driver for Snapdragon 8 Elite / Adreno 8xx, automatically detecting the GPU and applying the optimal driver and environment flags.
 - Android 10 or newer, 64-bit.
 - About **80 GB** free for the game data (internal storage or SD card), plus about 4 GB of internal storage for the app and its Windows environment.
-- A Mac or PC with the WoW Forever beta installed through Battle.net, to copy the game data from.
+- A Mac or PC with the client you want installed through Battle.net, to copy the game data from (one-time).
 
 ---
 
@@ -35,11 +43,11 @@ Requirements:
 
 ### 1. Install the app
 
-Download the APK from the [latest release](https://github.com/wyattabuntjer/AYN-Thor-WoW-Launcher/releases/latest) and install it on your device. The app's package name is `app.aynthorwow`, so it can sit alongside jaredgei's original WoW Forever app, GameNative and Winlator.
+Download the APK from the [latest release](https://github.com/wyattabuntjer/AYN-Thor-WoW-Launcher/releases/latest) and install it on your device (allow "install unknown apps" for your browser or file manager if Android asks). Newer builds are also available as a downloadable artifact on the latest green run in the repo's **Actions** tab. The app's package name is `app.aynthorwow`, so it can sit alongside jaredgei's original WoW Forever app, GameNative and Winlator.
 
 ### 2. Copy your WoW game data to the device (one-time setup)
 
-Copy two things from your Battle.net install (on a Mac that's `/Applications/World of Warcraft/`) into a folder on the device. The default is `/storage/emulated/0/WoW Forever/`. Any other folder works too, including one on an SD card. You only need to do this **once**; all subsequent game updates are handled directly in-app over Wi-Fi.
+Each client keeps its own folder. Forever uses `/storage/emulated/0/WoW Forever/` by default; Retail and Classic use `/storage/emulated/0/World of Warcraft/` (inside it: `_retail_` and `_classic_era_`). You only need the clients you plan to play. The steps below show Forever; Retail and Classic work the same way with their own install. Copy two things from your Battle.net install (on a Mac that's `/Applications/World of Warcraft/`) into a folder on the device. The default is `/storage/emulated/0/WoW Forever/`. Any other folder works too, including one on an SD card. You only need to do this **once**; all subsequent game updates are handled directly in-app over Wi-Fi.
 
 ```
 WoW Forever/
@@ -64,13 +72,14 @@ WOW_SRC="/Applications/World of Warcraft" tools/sync_wow_to_device.sh
 
 ### 3. Play
 
-Open **WoW Forever**. Once your game files and Battle.net credentials are configured, the app automatically launches straight into the game. If credentials are not yet configured, the launcher stops at the setup screen so you can enter them before playing. The first launch downloads the ARM64 game client and installs the Windows environment, which takes a few minutes and needs an internet connection.
+Open the app. Pick **Forever**, **Retail** or **Classic** at the top of the launcher, set up your Battle.net login once, and press **PLAY**. The Play button and boot screen name the client that is starting. If a client's game files aren't found, the launcher shows **Locate Game Files**. The first launch of each client downloads its ARM64 build and sets up the Windows environment, which takes a few minutes and needs an internet connection.
 
 - **Setup screen:** to access folder settings, forget credentials, check environment status, or view updates, hold **Start + Select + L2 + R2** (or tap the back button) during the loading splash to cancel boot and return to the setup screen.
 - The app creates a basic `WTF/Config.wtf` on first run and always sets `gxApi "D3D11"`, the renderer that works with DXVK.
 
 ### Controls and signing in
 
+- **Cursor mode (R3):** click the right stick to turn it into a mouse cursor. **A** and **B** click (left/right, or swapped, or off in the pad settings). Speed, ramp and deadzone are adjustable. Click R3 again to go back to normal camera control.
 - **Controller:** built-in handheld controllers work in-game. WoW's own gamepad mode handles the mapping.
 - **In-game menu:** press Back (the button or the back swipe gesture) to open the sidebar. It has **Keyboard**, on-screen controls, performance overlay and **Exit**.
 - **Keyboard:** the sidebar's **Keyboard** opens the Android keyboard. On dual-screen devices like the Thor it appears on the bottom screen. Symbols like `@` work, and so does pasting.
@@ -79,9 +88,25 @@ Open **WoW Forever**. Once your game files and Battle.net credentials are config
 
 ---
 
+## The Thor button pad
+
+On the AYN Thor the bottom screen shows a touch pad while you play. The header has three buttons: **trackpad**, **settings (gear)** and **keyboard**.
+
+- **Trackpad:** a touch mouse with Shift, Ctrl and Alt always available.
+- **Buttons:** hotbar numbers, F-keys, modifiers and window shortcuts (Map, Character, Spellbook, Talents, Skills, Quest Log, Social, System, Bags, Group Finder, Achievements, Guild). When more than eight window buttons are shown, they split into two columns.
+- **Settings page** (the gear) lets you change:
+  - which modifier keys, window buttons and pad sections are shown (the rest resize to fill the space)
+  - F1-F6 or F1-F12, swap left/right sides, hotbar pages, label size, haptics and double-tap lock time
+  - trackpad speed, acceleration and tap-to-click
+  - right-stick cursor speed, ramp, deadzone and A/B click mode
+  - remapping of any button, three saved profiles, backup to the clipboard, and reset
+  - which client launches next, and a helper for `Config.wtf`
+
+---
+
 ## Updating the game
 
-WoW Forever v2.0 features a native in-app game updater connected directly to Blizzard's public edge CDNs. **You no longer need a computer or USB cables to keep your game updated.**
+The launcher has a native in-app game updater connected directly to Blizzard's public edge CDNs, for each client. **You no longer need a computer or USB cables to keep your game updated.**
 
 Whenever Blizzard patches the game:
 1. **Live Version Check:** The launcher automatically checks the live version against Blizzard's public patch service on startup.
@@ -92,6 +117,8 @@ Whenever Blizzard patches the game:
 
 *(Optional fallback: If you ever want to re-seed or mirror your full PC installation over USB, `tools/sync_wow_to_device.sh` is still available.)*
 
+The app itself updates from this repo's releases: when a newer release with an APK is published, the launcher offers it.
+
 ---
 
 ## Troubleshooting
@@ -100,6 +127,7 @@ Whenever Blizzard patches the game:
 | :--- | :--- |
 | *CAS system was unable to initialize: no active install info entries* | `.build.info` or `_classic_beta_/.flavor.info` is missing on the device. |
 | *No realms available* / no servers listed | The device client is out of date. Tap **Update** on the launcher setup screen, or restart the app with Wi-Fi enabled. |
+| Retail or Classic won't start | Support for these is newer and less tested than Forever. Check `_retail_/Errors/` or `_classic_era_/Errors/` and open an issue with what you find. |
 | Keyboard doesn't appear | Force-stop Gboard (Settings → Apps → Gboard → Force stop) and open **Keyboard** again. It can get stuck on the second screen. |
 | Returns to the launcher after "Launching Game…" | Check the files under `_classic_beta_/Errors/` on the device. |
 | Handheld frontend (e.g. Cocoon) shows the wrong icon | The frontend cached an old icon. Set it with the frontend's "Edit App Artwork", or reinstall the app. |
@@ -118,7 +146,7 @@ tools/fetch_components.sh           # Wine/Proton, DXVK and Turnip archives (~13
 
 Release builds are signed with `app/keystores/keystore.properties` when it exists (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`). Otherwise they fall back to the debug key. Builds signed with different keys can't update each other, so switching between them means uninstalling first.
 
-`fetch_components.sh` downloads the three runtime archives from this repo's `components-v1` release and checks them against `tools/components.sha256`. If you already have them, pass a folder instead: `tools/fetch_components.sh /path/to/components`.
+`fetch_components.sh` downloads the three runtime archives from jaredgei's `components-v1` release and checks them against `tools/components.sha256`. If you already have them, pass a folder instead: `tools/fetch_components.sh /path/to/components`.
 
 ---
 
@@ -142,9 +170,10 @@ Full third-party license details are in [`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTI
 ### What this fork adds on top of WoW Forever for Android
 
 - Forever, Retail and Classic selectable from the launcher, each with its own game folder and in-app updates.
-- A stone-and-gold launcher theme and quick menu, and the selected flavor named on the Play button and boot screen.
+- A stone-and-gold launcher theme and quick menu, and the selected client named on the Play button and boot screen.
 - Second-screen button pad with a settings page: grouped buttons, window shortcuts, modifier and F-key options, remapping, profiles, and trackpad and stick tuning.
 - Right-stick cursor mode on R3 with A/B clicks and a speed ramp.
+- Its own package name (`app.aynthorwow`) and an updater that follows this repo's releases.
 
 ### What WoW Forever for Android changes from GameNative
 
