@@ -202,6 +202,53 @@ object PadSettings {
 
     fun defaultAction(listKey: String, index: Int): PadAction = ACTION_DEFAULTS.getValue(listKey)[index]
 
+    // Button positions. Long-pressing a pad button and dropping it on another swaps the two, and the
+    // new order is kept here as a JSON array of ids: window labels, or marker/command list indexes.
+
+    const val ORDER_WINDOWS = "order_windows"
+    const val ORDER_MARKERS = "order_markers"
+    const val ORDER_COMMANDS = "order_commands"
+    private val ORDER_KEYS = listOf(ORDER_WINDOWS, ORDER_MARKERS, ORDER_COMMANDS)
+
+    /** The ids each order starts from, in their default positions. */
+    fun defaultOrder(orderKey: String): List<String> = when (orderKey) {
+        ORDER_WINDOWS -> WINDOW_LABELS
+        ORDER_MARKERS -> ACTION_DEFAULTS.getValue(MARKERS).indices.map { it.toString() }
+        else -> ACTION_DEFAULTS.getValue(COMMANDS).indices.map { it.toString() }
+    }
+
+    /** The saved order. Unknown ids are dropped and any missing ones are added at the end, so it always fits. */
+    fun order(orderKey: String): List<String> {
+        val defaults = defaultOrder(orderKey)
+        val saved = runCatching {
+            val array = org.json.JSONArray(prefs?.getString(orderKey, null) ?: return defaults)
+            (0 until array.length()).map { array.getString(it) }
+        }.getOrNull() ?: return defaults
+        val kept = saved.filter { it in defaults }.distinct()
+        return kept + defaults.filter { it !in kept }
+    }
+
+    /** The marker or command list indexes in the order they're shown on the pad. */
+    fun displayOrder(listKey: String): List<Int> =
+        order(if (listKey == MARKERS) ORDER_MARKERS else ORDER_COMMANDS).map { it.toInt() }
+
+    /** Swaps the positions of two ids. */
+    fun swap(orderKey: String, a: String, b: String) {
+        val list = order(orderKey).toMutableList()
+        val i = list.indexOf(a)
+        val j = list.indexOf(b)
+        if (i < 0 || j < 0 || i == j) return
+        list[i] = b
+        list[j] = a
+        prefs?.edit()?.putString(orderKey, org.json.JSONArray(list).toString())?.apply()
+        version++
+    }
+
+    fun resetOrders() {
+        prefs?.edit()?.apply { ORDER_KEYS.forEach { remove(it) } }?.apply()
+        version++
+    }
+
     fun setAction(listKey: String, index: Int, action: PadAction) {
         val list = actions(listKey).toMutableList()
         list[index] = action
@@ -218,18 +265,20 @@ object PadSettings {
         prefs?.edit()?.apply {
             DEFAULTS.keys.forEach { remove(it) }
             ACTION_DEFAULTS.keys.forEach { remove(it) }
+            ORDER_KEYS.forEach { remove(it) }
             remove(REMAP)
         }?.apply()
         version++
     }
 
-    /** Every setting, the remap list and the button lists as one JSON object. */
+    /** Every setting, the remap list, the button lists and button positions as one JSON object. */
     fun snapshot(): JSONObject = JSONObject().apply {
         DEFAULTS.keys.forEach { key ->
             if (DEFAULTS[key] is Boolean) put(key, bool(key)) else put(key, int(key))
         }
         put(REMAP, remapJson())
         ACTION_DEFAULTS.keys.forEach { key -> put(key, org.json.JSONArray(actions(key).map { it.toJson() })) }
+        ORDER_KEYS.forEach { key -> put(key, org.json.JSONArray(order(key))) }
     }
 
     /** Applies a [snapshot]. Unknown or mistyped entries are ignored. */
@@ -242,6 +291,7 @@ object PadSettings {
         }
         json.optJSONObject(REMAP)?.let { editor.putString(REMAP, it.toString()) }
         ACTION_DEFAULTS.keys.forEach { key -> json.optJSONArray(key)?.let { editor.putString(key, it.toString()) } }
+        ORDER_KEYS.forEach { key -> json.optJSONArray(key)?.let { editor.putString(key, it.toString()) } }
         editor.apply()
         version++
     }

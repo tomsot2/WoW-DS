@@ -109,6 +109,7 @@ On the AYN Thor the bottom screen shows a touch pad while you play. It's built t
 - **Keyboard:** a full US QWERTY keyboard that fills the pad. The default **Wide letters** layout keeps the usual stagger but moves Tab, Caps, Shift, Enter, Backspace and the symbol keys into rows of their own, so the letters get the full width of the Thor's narrow screen. A **Standard** layout is in settings. Shift applies to the next key; there are also Caps Lock, Esc and arrow keys.
 - **Trackpad:** a touch mouse with Shift, Ctrl and Alt always available. Drag two fingers up or down to scroll (quest log, bags, chat).
 - **Easy on the screen:** the pad dims when you're not using it, and moves a few pixels every few minutes so nothing burns into the OLED.
+- **Arrange it your way:** hold a window, marker or command button until it buzzes, then drag it onto another button of the same kind to swap them. **Reset button positions** in settings puts them back.
 
 ### Marker and command buttons
 

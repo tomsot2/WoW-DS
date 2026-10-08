@@ -92,7 +92,14 @@ class ExternalActionPad(
         releaseMouseButtons.clear()
         settingsOpen = false
 
-        padView = ExternalActionBarView(context, xServer, theme, onKeyTapped = { releaseModifiers() }).apply {
+        padView = ExternalActionBarView(
+            context,
+            xServer,
+            theme,
+            onKeyTapped = { releaseModifiers() },
+            // Two buttons were swapped by dragging: rebuild the pad in the new order.
+            onLayoutChanged = { buildUi() },
+        ).apply {
             layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         }
         trackpadView = TouchpadView(context, xServer, false).apply {

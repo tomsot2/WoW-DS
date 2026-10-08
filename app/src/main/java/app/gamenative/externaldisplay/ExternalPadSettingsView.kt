@@ -78,6 +78,11 @@ class ExternalPadSettingsView(
                 ),
             )
             addView(toggleRow(listOf("Swap sides (windows on the right)" to PadSettings.SWAP_SIDES)))
+            addView(note("To move a window, marker or command button, hold it until it buzzes, then drag it onto another button of the same kind to swap them."))
+            addView(rowOf(button("Reset button positions") { b ->
+                PadSettings.resetOrders()
+                b.text = "Positions reset"
+            }))
         }
         section("Buttons and phrases") {
             addView(
@@ -254,7 +259,10 @@ class ExternalPadSettingsView(
             addView(rowOf(button("Back") { showMain() }))
         }
         section("Buttons") {
-            PadSettings.actions(listKey).withIndex().chunked(2).forEach { chunk ->
+            val actions = PadSettings.actions(listKey)
+            // In the order they sit on the pad (phrases keep their own order).
+            val shown = if (listKey == PadSettings.PHRASES) actions.indices.toList() else PadSettings.displayOrder(listKey)
+            shown.map { IndexedValue(it, actions[it]) }.chunked(2).forEach { chunk ->
                 addView(
                     rowOf(
                         *chunk.map { (i, action) ->

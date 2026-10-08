@@ -15,6 +15,7 @@ The bottom-screen pad now covers what's awkward with WoW's gamepad controls: cha
 - **Command buttons:** eight buttons that start as Ready check, Roll, Follow, Focus, Hearthstone, Stop cast, Thank and Wave.
 - **Edit any marker, command or phrase** in the pad's settings, under **Buttons and phrases**, with the pad's own keyboard. A button can type a chat command, or press one key (with Shift, Ctrl or Alt) that you've bound to an in-game macro. Profiles and backups include them.
 - **Burn-in protection:** the pad moves a few pixels every few minutes, so nothing sits on the same OLED pixels for hours. It can be turned off in settings.
+- **Move buttons:** hold a window, marker or command button until it buzzes, then drag it onto another button of the same kind to swap their places. The layout is saved, included in profiles and backups, and can be reset in settings.
 
 - **Wide letters keyboard layout**, now the default. It keeps the usual stagger but moves Tab, Caps, Shift, Enter, Backspace and the symbol keys into rows of their own, so the letters are about 40% wider on the Thor's narrow bottom screen. The previous layout is still available as **Standard** under **Keyboard layout** in settings.
 
@@ -22,6 +23,7 @@ The bottom-screen pad now covers what's awkward with WoW's gamepad controls: cha
 - The markers and command buttons replace the 1-9, 0, - and = hotbar grid, since the controller already reaches the action bars. The "Hotbar pages" setting is gone, and "Number emphasis" is now "Command emphasis".
 - The keyboard now fills the pad (below the chat bar), so its keys are as large as the screen allows.
 - The party buttons (Me, P1-P4) are stacked in a column beside the markers and commands, like the party frames, instead of a row of tall, thin buttons.
+- Window, marker and command buttons now act when your finger lifts, so holding one to move it doesn't open a window or run a command first. Sliding off a button cancels it.
 
 ## [1.0.0]
 
