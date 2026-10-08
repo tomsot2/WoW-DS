@@ -106,14 +106,16 @@ class ExternalPadSettingsView(
             addView(flavorRow())
             val status = note("")
             addView(
-                button("Write gamepad cursor lines to Config.wtf") {
-                    status.text = writeGamepadConfig()
-                },
+                rowOf(
+                    button("Write gamepad cursor lines to Config.wtf") {
+                        status.text = writeGamepadConfig()
+                    },
+                ),
             )
             addView(status)
         }
         section("Remap buttons") {
-            addView(button("Choose a button to remap") { showRemap() })
+            addView(rowOf(button("Choose a button to remap") { showRemap() }))
         }
         section("Profiles") {
             val status = note("")
@@ -148,10 +150,12 @@ class ExternalPadSettingsView(
         }
         section("Reset") {
             addView(
-                button("Reset to defaults") {
-                    PadSettings.resetAll()
-                    showMain()
-                },
+                rowOf(
+                    button("Reset to defaults") {
+                        PadSettings.resetAll()
+                        showMain()
+                    },
+                ),
             )
         }
     }
