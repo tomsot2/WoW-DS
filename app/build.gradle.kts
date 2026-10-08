@@ -50,7 +50,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "app.wowforever"
+        applicationId = "app.aynthorwow"
 
         minSdk = 26
 

@@ -35,7 +35,7 @@ Requirements:
 
 ### 1. Install the app
 
-Download the APK from the latest successful run under this repo's **Actions** tab (Artifacts), or get jaredgei's original build from the [original project's releases](https://github.com/jaredgei/wow-forever-android/releases/latest), and install it on your device. The app's package name is `app.wowforever`, so it can sit alongside GameNative or Winlator.
+Download the APK from the [latest release](https://github.com/wyattabuntjer/AYN-Thor-WoW-Launcher/releases/latest) and install it on your device. The app's package name is `app.aynthorwow`, so it can sit alongside jaredgei's original WoW Forever app, GameNative and Winlator.
 
 ### 2. Copy your WoW game data to the device (one-time setup)
 
@@ -150,7 +150,7 @@ Full third-party license details are in [`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTI
 
 GameNative is a general game library with Steam, GOG, Epic, Amazon, EA and Rockstar stores, mod management, VR support and per-game container settings. This fork turns it into a launcher for one pre-configured container:
 
-- **Standalone identity:** package `app.wowforever`, WoW name, icons, banners and splash screen, installable next to GameNative.
+- **Standalone identity:** package `app.aynthorwow`, WoW name, icons, banners and splash screen, installable next to GameNative.
 - **Direct launch & instant boot:** the app opens to a WoW splash screen (`ui/screen/wow/WoWForeverScreen.kt`) and automatically boots straight into the game once configured. Holding **Start + Select + L2 + R2** or pressing Back on the loading screen cancels boot to return to the setup screen.
 - **Pre-configured container:** bionic, Proton 11 ARM64EC, Turnip through the Vulkan wrapper, DXVK 2.4.1 aarch64, WINEESYNC off, all 8 cores, 1920x1080, and `G:` mapped to `/storage/emulated/0/WoW Forever`.
 - **Native ARM64 launch:** GameNative wraps every Windows program in `winhandler.exe`, an x86-64 helper that needs x86 emulation. ARM64 executables now launch directly, so the game never goes through FEX, and the working directory is set from the mapped drive.
