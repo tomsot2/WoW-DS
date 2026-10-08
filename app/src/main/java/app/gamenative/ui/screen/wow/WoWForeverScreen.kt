@@ -906,7 +906,7 @@ private fun FlavorSelector(selected: WowFlavor, enabled: Boolean, onSelect: (Wow
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    flavor.label.uppercase(),
+                    flavor.shortName.uppercase(),
                     fontSize = 12.sp,
                     fontFamily = FontFamily.Serif,
                     fontWeight = FontWeight.Bold,
