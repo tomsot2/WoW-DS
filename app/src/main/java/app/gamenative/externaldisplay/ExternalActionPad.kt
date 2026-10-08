@@ -45,10 +45,12 @@ class ExternalActionPad(
     private var settingsVersion = 0
     private val heldModifiers = mutableSetOf<XKeycode>()
     private val lockedModifiers = mutableSetOf<XKeycode>()
-    private val modifierStyles = mutableMapOf<XKeycode, (Boolean) -> Unit>()
+    // Each modifier can have a button on the pad and one on the trackpad; both follow the same state.
+    private val modifierStyles = mutableMapOf<XKeycode, MutableList<(Boolean) -> Unit>>()
     private lateinit var trackpadView: TouchpadView
     private lateinit var trackpadPanel: LinearLayout
-    private lateinit var modifierRow: LinearLayout
+    private lateinit var padModifierRow: LinearLayout
+    private lateinit var trackpadModifierRow: LinearLayout
     private val releaseMouseButtons = mutableListOf<() -> Unit>()
 
     init {
@@ -133,17 +135,29 @@ class ExternalActionPad(
             addView(settingsButton)
             addView(keyboardButton)
         }
-        // One set of modifier buttons: under the action buttons on the pad, above the click buttons on the trackpad.
-        modifierRow = LinearLayout(context).apply {
+        // Modifier buttons on the pad (above the number block) follow the "modifier keys shown" setting.
+        // With none showing, the row and its backing stay out of the way.
+        padModifierRow = LinearLayout(context).apply {
             orientation = HORIZONTAL
             val m = (3 * density).toInt()
             setPadding(0, m, 0, 0)
-            // Which modifiers show is a setting. With none showing, the row (and its backing) stays out of the way.
             if (PadSettings.bool(PadSettings.MOD_SHIFT)) addView(modifierButton("Shift", XKeycode.KEY_SHIFT_L))
             if (PadSettings.bool(PadSettings.MOD_CTRL)) addView(modifierButton("Ctrl", XKeycode.KEY_CTRL_L))
             if (PadSettings.bool(PadSettings.MOD_ALT)) addView(modifierButton("Alt", XKeycode.KEY_ALT_L))
         }
-        if (modifierRow.childCount > 0) padView.setModifierRow(modifierRow)
+        if (padModifierRow.childCount > 0) padView.setModifierRow(padModifierRow)
+        // The trackpad always has all three, above the click buttons, whatever the setting says.
+        trackpadModifierRow = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            val m = (10 * density).toInt()
+            layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (44 * density).toInt()).apply {
+                setMargins(m, 0, m, 0)
+            }
+            addView(modifierButton("Shift", XKeycode.KEY_SHIFT_L))
+            addView(modifierButton("Ctrl", XKeycode.KEY_CTRL_L))
+            addView(modifierButton("Alt", XKeycode.KEY_ALT_L))
+        }
+        trackpadPanel.addView(trackpadModifierRow, 1)
         val body = FrameLayout(context).apply {
             layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
             addView(padView)
@@ -178,8 +192,8 @@ class ExternalActionPad(
                 background = theme.buttonBackground(density, 12f, active, emphasized = locked, muted = true)
                 setTextColor(if (active) theme.textPressed else theme.text)
             }
-            style(false)
-            modifierStyles[key] = { active -> style(active) }
+            style(key in heldModifiers)
+            modifierStyles.getOrPut(key) { mutableListOf() }.add { active -> style(active) }
             var lastArmedAt = 0L
             setOnClickListener {
                 let { PadSettings.haptic(it) }
@@ -294,7 +308,7 @@ class ExternalActionPad(
         heldModifiers.toList().filter { it !in lockedModifiers }.forEach { key ->
             heldModifiers.remove(key)
             xServer.injectKeyRelease(key)
-            modifierStyles[key]?.invoke(false)
+            modifierStyles[key]?.forEach { it(false) }
         }
     }
 
@@ -317,17 +331,8 @@ class ExternalActionPad(
         trackpadPanel.visibility = if (on) View.VISIBLE else View.GONE
         if (!on) releaseMouseButtons.forEach { it() }
         padView.visibility = if (on) View.GONE else View.VISIBLE
-        // The modifiers follow whichever view is showing.
-        (modifierRow.parent as? ViewGroup)?.removeView(modifierRow)
-        if (on) {
-            val m = (10 * density).toInt()
-            modifierRow.layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (44 * density).toInt()).apply {
-                setMargins(m, 0, m, 0)
-            }
-            if (modifierRow.childCount > 0) trackpadPanel.addView(modifierRow, 1)
-        } else if (modifierRow.childCount > 0) {
-            padView.setModifierRow(modifierRow)
-        }
+        // A modifier armed on one view shows as armed on the other too.
+        modifierStyles.forEach { (key, styles) -> styles.forEach { it(key in heldModifiers) } }
         styleButton(trackpadButton, on)
     }
 
