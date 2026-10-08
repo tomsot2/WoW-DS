@@ -42,6 +42,7 @@ object PadSettings {
     const val STICK_RAMP = "stick_ramp"
     const val STICK_DEADZONE = "stick_deadzone"
     const val AB_MODE = "ab_mode"
+    const val R3_TOGGLE = "r3_toggle"
     const val MODE_MESSAGE = "mode_message"
 
     /** Every window button the pad can show. Each has an on/off setting, on by default. */
@@ -76,6 +77,7 @@ object PadSettings {
         STICK_RAMP to 90,
         STICK_DEADZONE to 15,
         AB_MODE to 1,
+        R3_TOGGLE to true,
         MODE_MESSAGE to true,
     )
         .apply { WINDOW_LABELS.forEach { put(windowKey(it), true) } }

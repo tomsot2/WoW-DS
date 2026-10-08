@@ -197,7 +197,15 @@ class PhysicalControllerHandler(
             val keyCode = JoyConSupport.remapKeyCode(event.device, event)
             if (radialMenuPressed && !isRadialMenuOpenerDevice(event.deviceId)) return true
             val controller = profile?.getController(event.deviceId)
-            if (keyCode == KeyEvent.KEYCODE_BUTTON_THUMBR && controller != null && !radialMenuPressed) {
+            if (keyCode == KeyEvent.KEYCODE_BUTTON_THUMBR && controller != null && rightStickMouseMode &&
+                !PadSettings.bool(PadSettings.R3_TOGGLE)
+            ) {
+                // R3 toggling was switched off in the pad settings while cursor mode was on: drop back to the gamepad.
+                setRightStickMouseMode(false, event.deviceId)
+            }
+            if (keyCode == KeyEvent.KEYCODE_BUTTON_THUMBR && controller != null && !radialMenuPressed &&
+                PadSettings.bool(PadSettings.R3_TOGGLE)
+            ) {
                 // R3 click toggles the right stick between camera (gamepad) and mouse pointer.
                 if (event.action == KeyEvent.ACTION_DOWN) {
                     setRightStickMouseMode(!rightStickMouseMode, event.deviceId)

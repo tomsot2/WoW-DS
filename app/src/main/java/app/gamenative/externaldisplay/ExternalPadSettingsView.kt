@@ -95,6 +95,7 @@ class ExternalPadSettingsView(
             addView(toggleRow(listOf("Tap to click" to PadSettings.TP_TAP)))
         }
         section("Right-stick cursor (R3)") {
+            addView(toggleRow(listOf("R3 toggles cursor mode" to PadSettings.R3_TOGGLE)))
             addView(sliderRow("Base speed", PadSettings.STICK_BASE, 5, 30) { tenths(it) })
             addView(sliderRow("Max speed", PadSettings.STICK_MAX, 10, 50) { tenths(it) })
             addView(sliderRow("Ramp starts at", PadSettings.STICK_RAMP, 50, 99) { "$it%" })
