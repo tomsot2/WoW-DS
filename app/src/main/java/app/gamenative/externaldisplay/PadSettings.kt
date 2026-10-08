@@ -27,6 +27,7 @@ object PadSettings {
     const val SEC_NUMBERS = "sec_numbers"
     const val SEC_FKEYS = "sec_fkeys"
     const val SWAP_SIDES = "swap_sides"
+    const val FKEY_COUNT = "fkey_count"
     const val MUTED = "muted_borders"
     const val EMPHASIS = "number_emphasis"
     const val LABEL_SCALE = "label_scale"
@@ -52,6 +53,7 @@ object PadSettings {
         SEC_NUMBERS to true,
         SEC_FKEYS to true,
         SWAP_SIDES to false,
+        FKEY_COUNT to 0,
         MUTED to 55,
         EMPHASIS to 100,
         LABEL_SCALE to 100,

@@ -78,7 +78,10 @@ class ExternalActionBarView(
         }
         val functionGroup = group(vertical = true, strong = false).apply {
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1.2f).apply { setMargins(0, dp(3), 0, dp(3)) }
-            FUNCTION_KEYS.chunked(6).forEach { addView(keyRow(it, textSp = 13f, weight = 1f, muted = true)) }
+            // F1-F12 in two rows, or F1-F6 in one row that fills the same space with bigger buttons.
+            val sixOnly = PadSettings.int(PadSettings.FKEY_COUNT) == 1
+            val fKeys = if (sixOnly) FUNCTION_KEYS.take(6) else FUNCTION_KEYS
+            fKeys.chunked(6).forEach { addView(keyRow(it, textSp = if (sixOnly) 16f else 13f, weight = 1f, muted = true)) }
             if (!PadSettings.bool(PadSettings.SEC_FKEYS)) visibility = GONE
         }
         rightColumn = column(RIGHT_WEIGHT).apply {
