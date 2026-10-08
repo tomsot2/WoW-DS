@@ -35,6 +35,7 @@ object PadSettings {
     const val DOUBLE_TAP_MS = "double_tap_ms"
     const val BURN_IN_SHIFT = "burn_in_shift"
     const val PHRASE_CHANNEL = "phrase_channel"
+    const val KEYBOARD_LAYOUT = "keyboard_layout"
     const val TP_SPEED = "trackpad_speed"
     const val TP_ACCEL = "trackpad_accel"
     const val TP_TAP = "trackpad_tap"
@@ -109,6 +110,8 @@ object PadSettings {
         DOUBLE_TAP_MS to 350,
         BURN_IN_SHIFT to true,
         PHRASE_CHANNEL to 1,
+        // 0: wide letters (side keys in rows of their own), 1: standard 15-key-wide rows.
+        KEYBOARD_LAYOUT to 0,
         TP_SPEED to 7,
         TP_ACCEL to 10,
         TP_TAP to true,

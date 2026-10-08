@@ -16,8 +16,12 @@ The bottom-screen pad now covers what's awkward with WoW's gamepad controls: cha
 - **Edit any marker, command or phrase** in the pad's settings, under **Buttons and phrases**, with the pad's own keyboard. A button can type a chat command, or press one key (with Shift, Ctrl or Alt) that you've bound to an in-game macro. Profiles and backups include them.
 - **Burn-in protection:** the pad moves a few pixels every few minutes, so nothing sits on the same OLED pixels for hours. It can be turned off in settings.
 
+- **Wide letters keyboard layout**, now the default. It keeps the usual stagger but moves Tab, Caps, Shift, Enter, Backspace and the symbol keys into rows of their own, so the letters are about 40% wider on the Thor's narrow bottom screen. The previous layout is still available as **Standard** under **Keyboard layout** in settings.
+
 ### Changed
 - The markers and command buttons replace the 1-9, 0, - and = hotbar grid, since the controller already reaches the action bars. The "Hotbar pages" setting is gone, and "Number emphasis" is now "Command emphasis".
+- The keyboard now fills the pad (below the chat bar), so its keys are as large as the screen allows.
+- The party buttons (Me, P1-P4) are stacked in a column beside the markers and commands, like the party frames, instead of a row of tall, thin buttons.
 
 ## [1.0.0]
 

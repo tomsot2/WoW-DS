@@ -127,16 +127,16 @@ class ExternalActionPad(
             )
             visibility = View.GONE
         }
-        keyboardView = ExternalOnScreenKeyboardView(context, xServer, theme).apply {
-            layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        // The keyboard fills the pad below the chat bar, so its keys are as large as the screen allows.
+        keyboardView = ExternalOnScreenKeyboardView(context, xServer, theme, fillHeight = true).apply {
+            layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
             // Opened with the Chat button: sending the message closes the keyboard again.
             onEnter = { if (openedForChat) setKeyboard(false) }
         }
         // The chat bar (channels and quick phrases) sits on top of the keyboard.
         keyboardPanel = LinearLayout(context).apply {
             orientation = VERTICAL
-            layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                .apply { gravity = Gravity.BOTTOM }
+            layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             setBackgroundColor(theme.background)
             addView(chatBar())
             addView(keyboardView)
@@ -502,7 +502,7 @@ class ExternalActionPad(
             setSettings(false)
         }
         keyboardPanel.visibility = if (on) View.VISIBLE else View.GONE
-        // With the keyboard up, the space above it is left blank (just the pad background).
+        // The keyboard panel covers the whole pad while it is up.
         padView.visibility = if (on) View.GONE else View.VISIBLE
         openedForChat = false
         styleButton(keyboardButton, on)

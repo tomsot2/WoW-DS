@@ -17,9 +17,9 @@ import com.winlator.xserver.XServer
  *
  * Left half: a column of window shortcuts (Map, Character, Spellbook, Talents, Skills, Quest Log,
  * Social, System).
- * Right half, top to bottom: the modifier buttons (see [setModifierRow]), the 8 target marker
- * buttons, the 8 command buttons, and a party row (Me, P1-P4) that sends F1-F5 to target yourself or
- * a party member. The action bars themselves live on the controller (WoW's gamepad mode).
+ * Right half: the modifier buttons (see [setModifierRow]) on top; below them the 8 target marker
+ * buttons and the 8 command buttons, with a party column beside them (Me, P1-P4) that sends F1-F5 to
+ * target yourself or a party member. The action bars themselves live on the controller (WoW's gamepad mode).
  *
  * Window and party buttons send WoW's default keys, so they work with the stock bindings and need no
  * addon. Marker and command buttons are editable [PadAction]s: a chat command such as "/tm 8", or a key
@@ -102,16 +102,31 @@ class ExternalActionBarView(
             }
             if (!PadSettings.bool(PadSettings.SEC_COMMANDS)) visibility = GONE
         }
+        // Party buttons stack top to bottom (Me, then P1-P4, like the party frames) in a narrow column
+        // beside the markers and commands, so each button is wide and short rather than tall and thin.
         val partyGroup = group(vertical = true, strong = false).apply {
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1.2f).apply { setMargins(0, dp(3), 0, dp(3)) }
-            addView(keyRow(PARTY_SLOTS, textSp = 16f, weight = 1f, muted = true))
+            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, PARTY_WEIGHT).apply { setMargins(dp(6), dp(3), 0, dp(3)) }
+            PARTY_SLOTS.forEach { addView(keyRow(listOf(it), textSp = 16f, weight = 1f, muted = true)) }
             if (!PadSettings.bool(PadSettings.SEC_PARTY)) visibility = GONE
+        }
+        val actionColumn = LinearLayout(context).apply {
+            orientation = VERTICAL
+            isMotionEventSplittingEnabled = true
+            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
+            addView(markerGroup)
+            addView(commandGroup)
+            if (markerGroup.visibility == GONE && commandGroup.visibility == GONE) visibility = GONE
+        }
+        val lowerRow = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            isMotionEventSplittingEnabled = true
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 4f)
+            addView(actionColumn)
+            addView(partyGroup)
         }
         rightColumn = column(RIGHT_WEIGHT).apply {
             addView(modifierGroup)
-            addView(markerGroup)
-            addView(commandGroup)
-            addView(partyGroup)
+            addView(lowerRow)
         }
         // "Swap sides" puts the window column on the right.
         if (PadSettings.bool(PadSettings.SWAP_SIDES)) {
@@ -286,6 +301,9 @@ class ExternalActionBarView(
         // A smaller RIGHT_WEIGHT squeezes that block toward the right edge, within reach of a right thumb.
         private const val LEFT_WEIGHT = 1f
         private const val RIGHT_WEIGHT = 1f
+
+        // Width of the party column, relative to the marker/command block beside it (1).
+        private const val PARTY_WEIGHT = 0.3f
 
         // Up to this many window buttons stay in one column; more split it in two, a little wider overall.
         private const val SINGLE_COLUMN_MAX = 8

@@ -99,6 +99,8 @@ class ExternalPadSettingsView(
             addView(sliderRow("Command emphasis", PadSettings.EMPHASIS, 0, 200) { "$it%" })
             addView(sliderRow("Label size", PadSettings.LABEL_SCALE, 80, 140) { "$it%" })
             addView(cycleRow("Haptics", PadSettings.HAPTICS, listOf("Off", "Light", "Normal", "Strong")))
+            addView(cycleRow("Keyboard layout", PadSettings.KEYBOARD_LAYOUT, listOf("Wide letters", "Standard")))
+            addView(note("Wide letters moves Tab, Caps, Shift, Enter, Backspace and the symbol keys into rows of their own, so the letters get the full width."))
             addView(sliderRow("Double-tap lock", PadSettings.DOUBLE_TAP_MS, 200, 600) { "$it ms" })
             addView(cycleRow("Dim when idle", PadSettings.DIM_IDLE, listOf("Off", "After 15 s", "After 30 s", "After 1 min", "After 2 min")))
             addView(sliderRow("Dim amount", PadSettings.DIM_AMOUNT, 50, 95) { "$it%" })
@@ -355,7 +357,7 @@ class ExternalPadSettingsView(
         refreshFields()
         // The pad's own keyboard types into the selected field (nothing goes to the game). Enter switches field.
         content.addView(
-            ExternalOnScreenKeyboardView(context, null, theme) { key ->
+            ExternalOnScreenKeyboardView(context, null, theme, localInput = { key ->
                 fun edit(change: (String) -> String) {
                     current = if (activeField == 0) current.copy(label = change(current.label)) else current.copy(text = change(current.text))
                 }
@@ -365,7 +367,7 @@ class ExternalPadSettingsView(
                     ExternalOnScreenKeyboardView.LocalKey.Enter -> if (!phrase && !current.isKey) activeField = 1 - activeField
                 }
                 refreshFields()
-            },
+            }),
         )
     }
 

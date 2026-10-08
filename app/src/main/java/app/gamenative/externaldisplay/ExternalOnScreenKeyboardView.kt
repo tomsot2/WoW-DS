@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.drawable.StateListDrawable
 import android.view.Gravity
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.FrameLayout
@@ -22,6 +23,8 @@ class ExternalOnScreenKeyboardView(
     private val xServer: XServer?,
     private val theme: PadTheme = PadTheme.DEFAULT,
     private val localInput: ((LocalKey) -> Unit)? = null,
+    /** Stretch the rows to fill the height the keyboard is given, instead of a fixed key height. */
+    private val fillHeight: Boolean = false,
 ) : LinearLayout(context) {
 
     /** What a key produces in local mode. */
@@ -43,7 +46,8 @@ class ExternalOnScreenKeyboardView(
         val action: Action = Action.INPUT,
     )
 
-    private enum class Action { INPUT, SHIFT, CAPS, BACKSPACE, ENTER, SPACE, TAB, ESC, ARROW_LEFT, ARROW_DOWN, ARROW_RIGHT, ARROW_UP }
+    // GAP is an empty space in a row, used for the stagger in the wide layout.
+    private enum class Action { INPUT, SHIFT, CAPS, BACKSPACE, ENTER, SPACE, TAB, ESC, ARROW_LEFT, ARROW_DOWN, ARROW_RIGHT, ARROW_UP, GAP }
 
     private data class KeyButton(
         val spec: KeySpec,
@@ -67,113 +71,95 @@ class ExternalOnScreenKeyboardView(
         refreshLabels()
     }
 
+    private fun buildLayout() {
+        keyButtons.clear()
+        removeAllViews()
+        if (PadSettings.int(PadSettings.KEYBOARD_LAYOUT) == 1) buildStandardLayout() else buildWideLayout()
+    }
+
+    // Keys shared by both layouts.
+    private fun letter(c: Char) = KeySpec(c.toString(), c.uppercase(), XKeycode.valueOf("KEY_${c.uppercaseChar()}"), isLetter = true)
+    private fun letters(chars: String) = chars.map { letter(it) }
+    private fun gap(weight: Float) = KeySpec("", weight = weight, action = Action.GAP)
+    private val numberKeys get() = listOf(
+        KeySpec("1", "!", XKeycode.KEY_1), KeySpec("2", "@", XKeycode.KEY_2), KeySpec("3", "#", XKeycode.KEY_3),
+        KeySpec("4", "$", XKeycode.KEY_4), KeySpec("5", "%", XKeycode.KEY_5), KeySpec("6", "^", XKeycode.KEY_6),
+        KeySpec("7", "&", XKeycode.KEY_7), KeySpec("8", "*", XKeycode.KEY_8), KeySpec("9", "(", XKeycode.KEY_9),
+        KeySpec("0", ")", XKeycode.KEY_0),
+    )
+    private val grave get() = KeySpec("`", "~", XKeycode.KEY_GRAVE)
+    private val minus get() = KeySpec("-", "_", XKeycode.KEY_MINUS)
+    private val equal get() = KeySpec("=", "+", XKeycode.KEY_EQUAL)
+    private val bracketLeft get() = KeySpec("[", "{", XKeycode.KEY_BRACKET_LEFT)
+    private val bracketRight get() = KeySpec("]", "}", XKeycode.KEY_BRACKET_RIGHT)
+    private val semicolon get() = KeySpec(";", ":", XKeycode.KEY_SEMICOLON)
+    private val apostrophe get() = KeySpec("'", "\"", XKeycode.KEY_APOSTROPHE)
+    private val zRowPunctuation get() = listOf(
+        KeySpec(",", "<", XKeycode.KEY_COMMA), KeySpec(".", ">", XKeycode.KEY_PERIOD), KeySpec("/", "?", XKeycode.KEY_SLASH),
+    )
+    private fun backslash(weight: Float = 1f) = KeySpec("\\", "|", XKeycode.KEY_BACKSLASH, weight = weight)
+    private fun backspace(weight: Float) = KeySpec("⌫", keycode = XKeycode.KEY_BKSP, weight = weight, action = Action.BACKSPACE)
+    private fun tab(weight: Float) = KeySpec("Tab", keycode = XKeycode.KEY_TAB, weight = weight, action = Action.TAB)
+    private fun caps(weight: Float) = KeySpec("Caps", weight = weight, action = Action.CAPS)
+    private fun shift(weight: Float) = KeySpec("Shift", weight = weight, action = Action.SHIFT)
+    private fun enter(weight: Float) = KeySpec("Enter", keycode = XKeycode.KEY_ENTER, weight = weight, action = Action.ENTER)
+    private fun esc(weight: Float) = KeySpec("Esc", keycode = XKeycode.KEY_ESC, weight = weight, action = Action.ESC)
+    private fun space(weight: Float) = KeySpec("Space", keycode = XKeycode.KEY_SPACE, weight = weight, action = Action.SPACE)
+    private fun arrows(weight: Float = 1f) = listOf(
+        KeySpec("←", keycode = XKeycode.KEY_LEFT, weight = weight, action = Action.ARROW_LEFT),
+        KeySpec("↓", keycode = XKeycode.KEY_DOWN, weight = weight, action = Action.ARROW_DOWN),
+        KeySpec("↑", keycode = XKeycode.KEY_UP, weight = weight, action = Action.ARROW_UP),
+        KeySpec("→", keycode = XKeycode.KEY_RIGHT, weight = weight, action = Action.ARROW_RIGHT),
+    )
+
+    /**
+     * "Wide letters", for narrow screens like the Thor's bottom one. The letter rows keep a real
+     * keyboard's stagger (A starts a quarter key in, Z three quarters) but drop the side keys, so each
+     * letter row is 10.75 keys wide instead of 15 and the letters come out about 40% wider. The keys that
+     * used to sit at the sides get rows of their own above and below.
+     */
+    private fun buildWideLayout() {
+        addRow(listOf(grave, minus, equal, bracketLeft, bracketRight, backslash(), apostrophe, backspace(2.75f)))
+        addRow(numberKeys)
+        addRow(letters("qwertyuiop") + gap(0.75f))
+        addRow(listOf(gap(0.25f)) + letters("asdfghjkl") + semicolon + gap(0.5f))
+        addRow(listOf(gap(0.75f)) + letters("zxcvbnm") + zRowPunctuation)
+        addRow(listOf(shift(2f), caps(1.75f), space(4.75f), enter(2.25f)))
+        addRow(listOf(esc(1.5f), tab(1.5f)) + arrows(1.9375f))
+    }
+
     /**
      * A standard US QWERTY keyboard. Every row adds up to 15 key widths, so the rows line up with the
      * same stagger as a real keyboard. Shifted symbols come from Shift, as on a physical keyboard.
      */
-    private fun buildLayout() {
-        keyButtons.clear()
-        removeAllViews()
-
-        addRow(
-            listOf(
-                KeySpec("`", "~", XKeycode.KEY_GRAVE),
-                KeySpec("1", "!", XKeycode.KEY_1),
-                KeySpec("2", "@", XKeycode.KEY_2),
-                KeySpec("3", "#", XKeycode.KEY_3),
-                KeySpec("4", "$", XKeycode.KEY_4),
-                KeySpec("5", "%", XKeycode.KEY_5),
-                KeySpec("6", "^", XKeycode.KEY_6),
-                KeySpec("7", "&", XKeycode.KEY_7),
-                KeySpec("8", "*", XKeycode.KEY_8),
-                KeySpec("9", "(", XKeycode.KEY_9),
-                KeySpec("0", ")", XKeycode.KEY_0),
-                KeySpec("-", "_", XKeycode.KEY_MINUS),
-                KeySpec("=", "+", XKeycode.KEY_EQUAL),
-                KeySpec("⌫", keycode = XKeycode.KEY_BKSP, weight = 2f, action = Action.BACKSPACE),
-            ),
-        )
-
-        addRow(
-            listOf(
-                KeySpec("Tab", keycode = XKeycode.KEY_TAB, weight = 1.5f, action = Action.TAB),
-                KeySpec("q", "Q", XKeycode.KEY_Q, isLetter = true),
-                KeySpec("w", "W", XKeycode.KEY_W, isLetter = true),
-                KeySpec("e", "E", XKeycode.KEY_E, isLetter = true),
-                KeySpec("r", "R", XKeycode.KEY_R, isLetter = true),
-                KeySpec("t", "T", XKeycode.KEY_T, isLetter = true),
-                KeySpec("y", "Y", XKeycode.KEY_Y, isLetter = true),
-                KeySpec("u", "U", XKeycode.KEY_U, isLetter = true),
-                KeySpec("i", "I", XKeycode.KEY_I, isLetter = true),
-                KeySpec("o", "O", XKeycode.KEY_O, isLetter = true),
-                KeySpec("p", "P", XKeycode.KEY_P, isLetter = true),
-                KeySpec("[", "{", XKeycode.KEY_BRACKET_LEFT),
-                KeySpec("]", "}", XKeycode.KEY_BRACKET_RIGHT),
-                KeySpec("\\", "|", XKeycode.KEY_BACKSLASH, weight = 1.5f),
-            ),
-        )
-
-        addRow(
-            listOf(
-                KeySpec("Caps", weight = 1.75f, action = Action.CAPS),
-                KeySpec("a", "A", XKeycode.KEY_A, isLetter = true),
-                KeySpec("s", "S", XKeycode.KEY_S, isLetter = true),
-                KeySpec("d", "D", XKeycode.KEY_D, isLetter = true),
-                KeySpec("f", "F", XKeycode.KEY_F, isLetter = true),
-                KeySpec("g", "G", XKeycode.KEY_G, isLetter = true),
-                KeySpec("h", "H", XKeycode.KEY_H, isLetter = true),
-                KeySpec("j", "J", XKeycode.KEY_J, isLetter = true),
-                KeySpec("k", "K", XKeycode.KEY_K, isLetter = true),
-                KeySpec("l", "L", XKeycode.KEY_L, isLetter = true),
-                KeySpec(";", ":", XKeycode.KEY_SEMICOLON),
-                KeySpec("'", "\"", XKeycode.KEY_APOSTROPHE),
-                KeySpec("Enter", keycode = XKeycode.KEY_ENTER, weight = 2.25f, action = Action.ENTER),
-            ),
-        )
-
-        addRow(
-            listOf(
-                KeySpec("Shift", weight = 2.25f, action = Action.SHIFT),
-                KeySpec("z", "Z", XKeycode.KEY_Z, isLetter = true),
-                KeySpec("x", "X", XKeycode.KEY_X, isLetter = true),
-                KeySpec("c", "C", XKeycode.KEY_C, isLetter = true),
-                KeySpec("v", "V", XKeycode.KEY_V, isLetter = true),
-                KeySpec("b", "B", XKeycode.KEY_B, isLetter = true),
-                KeySpec("n", "N", XKeycode.KEY_N, isLetter = true),
-                KeySpec("m", "M", XKeycode.KEY_M, isLetter = true),
-                KeySpec(",", "<", XKeycode.KEY_COMMA),
-                KeySpec(".", ">", XKeycode.KEY_PERIOD),
-                KeySpec("/", "?", XKeycode.KEY_SLASH),
-                KeySpec("Shift", weight = 2.75f, action = Action.SHIFT),
-            ),
-        )
-
-        addRow(
-            listOf(
-                KeySpec("Esc", keycode = XKeycode.KEY_ESC, weight = 1.5f, action = Action.ESC),
-                KeySpec("Space", keycode = XKeycode.KEY_SPACE, weight = 9.5f, action = Action.SPACE),
-                KeySpec("←", keycode = XKeycode.KEY_LEFT, action = Action.ARROW_LEFT),
-                KeySpec("↓", keycode = XKeycode.KEY_DOWN, action = Action.ARROW_DOWN),
-                KeySpec("↑", keycode = XKeycode.KEY_UP, action = Action.ARROW_UP),
-                KeySpec("→", keycode = XKeycode.KEY_RIGHT, action = Action.ARROW_RIGHT),
-            ),
-        )
+    private fun buildStandardLayout() {
+        addRow(listOf(grave) + numberKeys + minus + equal + backspace(2f))
+        addRow(listOf(tab(1.5f)) + letters("qwertyuiop") + bracketLeft + bracketRight + backslash(1.5f))
+        addRow(listOf(caps(1.75f)) + letters("asdfghjkl") + semicolon + apostrophe + enter(2.25f))
+        addRow(listOf(shift(2.25f)) + letters("zxcvbnm") + zRowPunctuation + shift(2.75f))
+        addRow(listOf(esc(1.5f), space(9.5f)) + arrows())
     }
 
     private fun addRow(keys: List<KeySpec>) {
+        // With fillHeight the rows share whatever height the keyboard is given; otherwise each is a fixed height.
+        val height = if (fillHeight) ViewGroup.LayoutParams.MATCH_PARENT else dp(54)
         val row = LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER
-            layoutParams = LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            )
+            layoutParams = if (fillHeight) {
+                LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
+            } else {
+                LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            }
         }
 
         val margin = dp(3)
-        val height = dp(54)
 
         keys.forEach { spec ->
+            if (spec.action == Action.GAP) {
+                row.addView(View(context), LayoutParams(0, height, spec.weight))
+                return@forEach
+            }
             val button = Button(context).apply {
                 isAllCaps = false
                 setTextColor(theme.text)
@@ -225,7 +211,7 @@ class ExternalOnScreenKeyboardView(
             return
         }
         when (spec.action) {
-            Action.SHIFT, Action.CAPS -> Unit
+            Action.SHIFT, Action.CAPS, Action.GAP -> Unit
             Action.BACKSPACE -> pressKey(XKeycode.KEY_BKSP)
             Action.ENTER -> pressKey(XKeycode.KEY_ENTER)
             Action.SPACE -> pressKey(XKeycode.KEY_SPACE)
@@ -266,6 +252,7 @@ class ExternalOnScreenKeyboardView(
             Action.ARROW_RIGHT -> releaseKey(XKeycode.KEY_RIGHT)
             Action.ARROW_UP -> releaseKey(XKeycode.KEY_UP)
             Action.INPUT -> spec.keycode?.let { releaseKey(it) }
+            Action.GAP -> Unit
         }
     }
 

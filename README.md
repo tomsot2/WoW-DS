@@ -104,9 +104,9 @@ On the AYN Thor the bottom screen shows a touch pad while you play. It's built t
 - **Window shortcuts:** Map, Character, Spellbook, Talents, Skills, Quest Log, Social, System, Bags, Group Finder, Achievements and Guild, one tap each. When more than eight are shown, they split into two columns.
 - **Target markers:** Skull, Cross, Square, Moon, Triangle, Diamond, Circle and Star. One tap marks your target, instead of cycling through markers on the controller.
 - **Command buttons:** eight buttons you can set yourself. They start as Ready check, Roll, Follow, Focus, Hearthstone, Stop cast, Thank and Wave.
-- **Party row:** **Me**, **P1**-**P4**, WoW's default F1-F5 party targeting.
+- **Party column:** **Me**, **P1**-**P4** stacked top to bottom like the party frames, beside the markers and commands (WoW's default F1-F5 party targeting).
 - **Chat:** the chat button opens WoW's chat box with the keyboard, and closes the keyboard when you send. Above the keyboard is a chat bar: **Say, Party, Inst, Raid, Guild, Whisper, Reply** start a message in that channel, and the quick phrases (ty, np, brb, omw, ready?, gg, all editable) send straight to the channel picked with **To**.
-- **Keyboard:** a full US QWERTY layout with standard key sizes and stagger, Shift (applies to the next key), Caps Lock, Esc and arrow keys.
+- **Keyboard:** a full US QWERTY keyboard that fills the pad. The default **Wide letters** layout keeps the usual stagger but moves Tab, Caps, Shift, Enter, Backspace and the symbol keys into rows of their own, so the letters get the full width of the Thor's narrow screen. A **Standard** layout is in settings. Shift applies to the next key; there are also Caps Lock, Esc and arrow keys.
 - **Trackpad:** a touch mouse with Shift, Ctrl and Alt always available. Drag two fingers up or down to scroll (quest log, bags, chat).
 - **Easy on the screen:** the pad dims when you're not using it, and moves a few pixels every few minutes so nothing burns into the OLED.
 
@@ -125,7 +125,7 @@ The settings page (the gear) lets you change:
 
 - which modifier keys, window buttons and pad sections (windows, markers, commands, party) are shown; the rest resize to fill the space
 - the marker buttons, command buttons and quick phrases
-- swap left/right sides, label size, haptics and double-tap lock time
+- swap left/right sides, keyboard layout, label size, haptics and double-tap lock time
 - dimming when idle (off, or after 15 s to 2 min) and how dark it goes, and burn-in protection. When dimmed, the first tap only wakes the pad
 - trackpad speed, acceleration and tap-to-click
 - controller stick deadzone
