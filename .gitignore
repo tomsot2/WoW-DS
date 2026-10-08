@@ -82,3 +82,9 @@ WowB-ARM64/
 
 # Agent guidance (private)
 docs/
+
+# Signing keys (never commit)
+*.jks
+*.keystore
+!tools/ci-debug.keystore
+app/keystores/keystore.properties

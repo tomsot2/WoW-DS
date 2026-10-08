@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Test builds install next to the release as a separate app (package app.wowds.dev). -->
+    <string name="app_name" translatable="false">WoW-DS Dev</string>
+</resources>

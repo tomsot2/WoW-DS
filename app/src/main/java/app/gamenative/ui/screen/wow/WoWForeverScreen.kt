@@ -1083,7 +1083,7 @@ private fun containerConfig(gameRoot: File, gpu: GpuProfile, exeName: String, sc
         put("wineVersion", "$PROTON_VERSION-1")
         put("containerVariant", "bionic")
         put("fexcoreVersion", "2609-0")
-        put("drives", "D:/storage/emulated/0/DownloadE:/data/data/app.aynthorwow/storageG:${gameRoot.path}")
+        put("drives", "D:/storage/emulated/0/DownloadE:/data/data/${BuildConfig.APPLICATION_ID}/storageG:${gameRoot.path}")
         put("executablePath", "G:\\$FLAVOR_DIR\\$exeName")
         put("execArgs", "-d3d11")
         put("showFPS", true)

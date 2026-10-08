@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">WoW Launcher</string>
+    <string name="app_name" translatable="false">WoW-DS</string>
     <string name="home">Home</string>
     <string name="download">Download</string>
     <string name="install">Install</string>

@@ -1,19 +1,25 @@
-# AYN Thor WoW Launcher
+# WoW-DS
 
-> **A fork of [WoW Forever for Android](https://github.com/jaredgei/wow-forever-android) by [jaredgei](https://github.com/jaredgei).** The WoW launcher, the single-container setup, native ARM64 launch and the bundled runtime all come from jaredgei's project, which is itself a fork of GameNative. This fork adds Retail and Classic support, a styled launcher, a second-screen button pad with settings, controller cursor mode and a themed in-game menu for the AYN Thor. Please star and support the original.
+[![Latest release](https://img.shields.io/github/v/release/tomsot2/WoW-DS?label=release)](https://github.com/tomsot2/WoW-DS/releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/tomsot2/WoW-DS/build.yml?branch=main&label=build)](https://github.com/tomsot2/WoW-DS/actions/workflows/build.yml)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
+**World of Warcraft on dual-screen Android handhelds, built around the game's own gamepad controls.**
 
-Play **World of Warcraft** on Snapdragon Android handhelds as a normal Android app, with extra work for the dual-screen **AYN Thor**. Pick **Forever**, **Retail** or **Classic**, press Play, and the game runs.
+Play **World of Warcraft** on Snapdragon Android handhelds as a normal Android app. On the dual-screen **AYN Thor**, the bottom screen becomes a touch companion for the controller: a trackpad, a full keyboard, party targeting and one-tap window shortcuts. Pick **Forever**, **Retail** or **Classic**, press Play, and the game runs.
 
 This uses Blizzard's own **Windows ARM64** WoW clients, so the game itself runs natively on the device's CPU. Wine translates the Windows calls, and DXVK plus a patched Turnip Vulkan driver render the game on the Adreno GPU. Nothing is emulated as x86.
 
-### Highlights of this fork
+> **Standing on the shoulders of others.** WoW-DS is a fork of **[AYN Thor WoW Launcher](https://github.com/wyattabuntjer/AYN-Thor-WoW-Launcher)** by **[wyattabuntjer](https://github.com/wyattabuntjer)**, which is a fork of **[WoW Forever for Android](https://github.com/jaredgei/wow-forever-android)** by **[jaredgei](https://github.com/jaredgei)**, which is built on **[GameNative](https://github.com/utkarshdalal/GameNative)**. Almost everything that makes WoW run comes from them. See [Credits](#credits-and-how-it-works), and please star and support the original projects.
 
+### Highlights
+
+- **Gamepad first:** WoW's native gamepad mode drives the game, with nothing in the way. Every controller button, including R3, goes straight to WoW.
 - **Three clients in one app:** Forever (beta), Retail and Classic, each with its own game folder, in-app updates and Play button.
-- **Thor second-screen button pad:** a touch pad on the bottom screen with a trackpad, keyboard, hotbar-style buttons, window shortcuts (Map, Character, Spellbook, Bags, Group Finder and more), modifier and F-keys, and a full settings page. See [The Thor button pad](#the-thor-button-pad).
-- **Controller mouse mode:** the right stick becomes a cursor on R3, with A/B as clicks and an adjustable speed ramp.
+- **Second-screen companion pad:** a trackpad, a full QWERTY keyboard, party targeting (Me, P1-P4), hotbar buttons, window shortcuts (Map, Character, Spellbook, Bags, Group Finder and more) and modifiers, with a full settings page. It dims itself when you're not using it. See [The Thor button pad](#the-thor-button-pad).
 - **World of Warcraft look:** a stone-and-gold launcher and in-game quick menu, with the chosen client named on the Play button and boot screen.
-- **Its own app:** package `app.aynthorwow`, so it installs next to jaredgei's original WoW Forever app, GameNative and Winlator.
+- **Updates itself:** new versions published here are offered and installed from inside the app.
+- **Its own app:** package `app.wowds`, so it installs next to the AYN Thor WoW Launcher, WoW Forever for Android, GameNative and Winlator.
 
 > Unofficial community project. Not affiliated with or endorsed by Blizzard Entertainment. You need your own Battle.net account with access to the client you want to play (the Forever beta needs beta access). This repo and its releases contain **no** Blizzard game files.
 
@@ -43,7 +49,11 @@ Requirements:
 
 ### 1. Install the app
 
-Download the APK from the [latest release](https://github.com/wyattabuntjer/AYN-Thor-WoW-Launcher/releases/latest) and install it on your device (allow "install unknown apps" for your browser or file manager if Android asks). Newer builds are also available as a downloadable artifact on the latest green run in the repo's **Actions** tab. The app's package name is `app.aynthorwow`, so it can sit alongside jaredgei's original WoW Forever app, GameNative and Winlator.
+Download `WoW-DS-vX.Y.Z.apk` from the [latest release](https://github.com/tomsot2/WoW-DS/releases/latest) and install it on your device (allow "install unknown apps" for your browser or file manager if Android asks). Each release also lists the APK's SHA-256 checksum. The app's package name is `app.wowds`, so it can sit alongside the AYN Thor WoW Launcher, WoW Forever for Android, GameNative and Winlator.
+
+After that, WoW-DS keeps itself up to date: see [Updating the app](#updating-the-app).
+
+**Test builds:** every push to this repo also builds a **WoW-DS Dev** APK (package `app.wowds.dev`), available from the latest green run in the **Actions** tab. It installs as a separate app next to the release, and doesn't update itself.
 
 ### 2. Copy your WoW game data to the device (one-time setup)
 
@@ -79,8 +89,7 @@ Open the app. Pick **Forever**, **Retail** or **Classic** at the top of the laun
 
 ### Controls and signing in
 
-- **Cursor mode (R3):** click the right stick to turn it into a mouse cursor. **A** and **B** click (left/right, or swapped, or off in the pad settings). Speed, ramp and deadzone are adjustable. Click R3 again to go back to normal camera control.
-- **Controller:** built-in handheld controllers work in-game. WoW's own gamepad mode handles the mapping.
+- **Controller:** built-in handheld controllers work in-game. WoW's own gamepad mode handles the mapping, including R3. For a mouse cursor, use the trackpad on the bottom screen.
 - **In-game menu:** press Back (the button or the back swipe gesture) to open the sidebar. It has **Keyboard**, on-screen controls, performance overlay and **Exit**.
 - **Keyboard:** the sidebar's **Keyboard** opens the Android keyboard. On dual-screen devices like the Thor it appears on the bottom screen. Symbols like `@` work, and so does pasting.
 - **Battle.net Auto-Login:** configure credentials directly on the launcher setup screen (**Configure Login** / **Update Login**). Credentials are saved encrypted on-device via Android Keystore. On boot, the launcher generates `_classic_beta_/login.txt`, which the WoW client automatically reads on startup to sign in natively without macro simulation or synthetic clicks. Use **Forget Saved Login** on the launcher setup screen to clear credentials and remove the login file.
@@ -92,15 +101,17 @@ Open the app. Pick **Forever**, **Retail** or **Classic** at the top of the laun
 
 On the AYN Thor the bottom screen shows a touch pad while you play. The header has three buttons: **trackpad**, **settings (gear)** and **keyboard**.
 
-- **Trackpad:** a touch mouse with Shift, Ctrl and Alt always available.
-- **Buttons:** hotbar numbers, F-keys, modifiers and window shortcuts (Map, Character, Spellbook, Talents, Skills, Quest Log, Social, System, Bags, Group Finder, Achievements, Guild). When more than eight window buttons are shown, they split into two columns.
+- **Trackpad:** a touch mouse with Shift, Ctrl and Alt always available. Drag two fingers up or down to scroll (quest log, bags, chat).
+- **Keyboard:** a full US QWERTY layout with standard key sizes and stagger, Shift (applies to the next key), Caps Lock, Esc and arrow keys.
+- **Buttons:** hotbar numbers, a party row (**Me**, **P1**-**P4**, WoW's default F1-F5 party targeting), modifiers and window shortcuts (Map, Character, Spellbook, Talents, Skills, Quest Log, Social, System, Bags, Group Finder, Achievements, Guild). When more than eight window buttons are shown, they split into two columns.
 - **Settings page** (the gear) lets you change:
   - which modifier keys, window buttons and pad sections are shown (the rest resize to fill the space)
-  - F1-F6 or F1-F12, swap left/right sides, hotbar pages, label size, haptics and double-tap lock time
+  - swap left/right sides, hotbar pages, label size, haptics and double-tap lock time
+  - dimming when idle (off, or after 15 s to 2 min) and how dark it goes. When dimmed, the first tap only wakes the pad
   - trackpad speed, acceleration and tap-to-click
-  - right-stick cursor speed, ramp, deadzone and A/B click mode
+  - controller stick deadzone
   - remapping of any button, three saved profiles, backup to the clipboard, and reset
-  - which client launches next, and a helper for `Config.wtf`
+  - which client launches next
 
 ---
 
@@ -117,7 +128,11 @@ Whenever Blizzard patches the game:
 
 *(Optional fallback: If you ever want to re-seed or mirror your full PC installation over USB, `tools/sync_wow_to_device.sh` is still available.)*
 
-The app itself updates from this repo's releases: when a newer release with an APK is published, the launcher offers it.
+## Updating the app
+
+WoW-DS checks this repo's [releases](https://github.com/tomsot2/WoW-DS/releases) each time the launcher opens. When a newer version is out, it shows the release notes and an **Update** button: tap it, and the app downloads the APK and hands it to Android's installer. The first time, Android asks you to allow WoW-DS to install apps.
+
+Before installing, the app checks that the download is WoW-DS and signed with the same key as your install, so a bad download can't replace it. Your settings, login and game files are kept.
 
 ---
 
@@ -140,11 +155,21 @@ Requirements: JDK 17 and the Android SDK (with build-tools and platform-tools).
 
 ```bash
 tools/fetch_components.sh           # Wine/Proton, DXVK and Turnip archives (~130 MB, not in git)
-./gradlew assembleModernRelease     # app/build/outputs/apk/modern/release/app-modern-release.apk
-./gradlew assembleModernDebug       # unminified debug build, faster to iterate on
+./gradlew assembleModernDebug       # WoW-DS Dev (app.wowds.dev): app/build/outputs/apk/modern/debug/
+./gradlew assembleModernRelease     # WoW-DS (app.wowds): app/build/outputs/apk/modern/release/
 ```
 
 Release builds are signed with `app/keystores/keystore.properties` when it exists (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`). Otherwise they fall back to the debug key. Builds signed with different keys can't update each other, so switching between them means uninstalling first.
+
+### Publishing a release
+
+Releases are built and published by GitHub Actions ([`release.yml`](.github/workflows/release.yml)), signed with the project's release key from the repository secrets.
+
+1. Bump `versionCode` and `versionName` in [`app/build.gradle.kts`](app/build.gradle.kts).
+2. Add a `## [X.Y.Z]` section to [`CHANGELOG.md`](CHANGELOG.md). It becomes the release notes, which the app also shows in its update dialog.
+3. Commit, then tag and push: `git tag vX.Y.Z && git push origin main vX.Y.Z`.
+
+The workflow refuses to publish if the tag doesn't match `versionName` or the signing secrets are missing. Installed apps see the new release the next time the launcher opens.
 
 `fetch_components.sh` downloads the three runtime archives from jaredgei's `components-v1` release and checks them against `tools/components.sha256`. If you already have them, pass a folder instead: `tools/fetch_components.sh /path/to/components`.
 
@@ -154,7 +179,8 @@ Release builds are signed with `app/keystores/keystore.properties` when it exist
 
 This project packages other people's work into a single-purpose app. None of it would exist without:
 
-- **[jaredgei/wow-forever-android](https://github.com/jaredgei/wow-forever-android)** by **jaredgei**. This repo is a fork of it. The WoW launcher screen, the pre-configured container, native ARM64 launch, the Battle.net client downloader, the bundled runtime components and most of the Thor fixes described below were done there. Thank you.
+- **[wyattabuntjer/AYN-Thor-WoW-Launcher](https://github.com/wyattabuntjer/AYN-Thor-WoW-Launcher)** by **wyattabuntjer**. WoW-DS is a direct fork of it. The Retail and Classic support, the stone-and-gold launcher and quick menu, and the AYN Thor second-screen pad with its trackpad, settings, remapping and profiles were built there. Thank you.
+- **[jaredgei/wow-forever-android](https://github.com/jaredgei/wow-forever-android)** by **jaredgei**, which the AYN Thor WoW Launcher forks. The WoW launcher screen, the pre-configured container, native ARM64 launch, the Battle.net client downloader, the in-app game updater, the bundled runtime components and most of the Thor fixes described below were done there. Thank you.
 
 - **[GameNative](https://github.com/utkarshdalal/GameNative)** by Utkarsh Dalal and contributors (GPL-3.0). The Android app, the Wine container management and the X server are all GameNative, based on v1.2.1. GameNative in turn builds on **[Pluvia](https://github.com/oxters168/Pluvia)**, **[Winlator](https://github.com/brunodev85/winlator)**, **[Winlator Cmod](https://github.com/coffincolors/winlator)** and the **[Bionic Vulkan wrapper](https://github.com/leegao/bionic-vulkan-wrapper)**.
 - **The WoW Forever RP6 community bundle**, which first got the beta running on a Retroid Pocket 6 in GameNative and supplied the three custom runtime components:
@@ -167,19 +193,29 @@ This project packages other people's work into a single-purpose app. None of it 
 
 Full third-party license details are in [`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTICES).
 
-### What this fork adds on top of WoW Forever for Android
+### What WoW-DS changes from the AYN Thor WoW Launcher
+
+WoW-DS is tuned for playing with WoW's native gamepad controls rather than keyboard-and-mouse style. The full list is in [`CHANGELOG.md`](CHANGELOG.md).
+
+- **Native gamepad controls:** the right-stick cursor mode (toggled with R3) is removed, so R3, the right stick and A/B always go to WoW's own gamepad mode. The bottom-screen trackpad is the mouse.
+- **Party targeting row:** F1-F12 are replaced by **Me, P1, P2, P3, P4** (WoW's default F1-F5 party targeting), which is awkward to do on a controller.
+- **QWERTY keyboard:** a standard US layout with real key sizes and row stagger, separate Shift and Caps Lock, Esc and arrow keys, and no separate symbols page.
+- **Idle dimming:** the pad dims after a set time without a touch, and the first tap only wakes it.
+- **Haptics:** the keyboard follows the pad's haptics setting.
+- **Own identity and releases:** package `app.wowds`, a separate `app.wowds.dev` for test builds, signed releases published by GitHub Actions, and an updater that follows this repo and checks each download before installing it.
+
+### What the AYN Thor WoW Launcher adds on top of WoW Forever for Android
 
 - Forever, Retail and Classic selectable from the launcher, each with its own game folder and in-app updates.
 - A stone-and-gold launcher theme and quick menu, and the selected client named on the Play button and boot screen.
-- Second-screen button pad with a settings page: grouped buttons, window shortcuts, modifier and F-key options, remapping, profiles, and trackpad and stick tuning.
-- Right-stick cursor mode on R3 with A/B clicks and a speed ramp.
-- Its own package name (`app.aynthorwow`) and an updater that follows this repo's releases.
+- Second-screen button pad with a settings page: grouped buttons, window shortcuts, modifiers, remapping, profiles, and trackpad tuning.
+- Its own package name (`app.aynthorwow`) and an updater that follows its releases.
 
 ### What WoW Forever for Android changes from GameNative
 
 GameNative is a general game library with Steam, GOG, Epic, Amazon, EA and Rockstar stores, mod management, VR support and per-game container settings. This fork turns it into a launcher for one pre-configured container:
 
-- **Standalone identity:** package `app.aynthorwow`, WoW name, icons, banners and splash screen, installable next to GameNative.
+- **Standalone identity:** its own package, WoW name, icons, banners and splash screen, installable next to GameNative.
 - **Direct launch & instant boot:** the app opens to a WoW splash screen (`ui/screen/wow/WoWForeverScreen.kt`) and automatically boots straight into the game once configured. Holding **Start + Select + L2 + R2** or pressing Back on the loading screen cancels boot to return to the setup screen.
 - **Pre-configured container:** bionic, Proton 11 ARM64EC, Turnip through the Vulkan wrapper, DXVK 2.4.1 aarch64, WINEESYNC off, all 8 cores, 1920x1080, and `G:` mapped to `/storage/emulated/0/WoW Forever`.
 - **Native ARM64 launch:** GameNative wraps every Windows program in `winhandler.exe`, an x86-64 helper that needs x86 emulation. ARM64 executables now launch directly, so the game never goes through FEX, and the working directory is set from the mapped drive.

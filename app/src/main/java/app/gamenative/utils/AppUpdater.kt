@@ -2,19 +2,27 @@ package app.gamenative.utils
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import app.gamenative.BuildConfig
 import java.io.File
+import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
 import org.json.JSONObject
 import timber.log.Timber
 
+/**
+ * In-app updates from this project's GitHub releases ([BuildConfig.UPDATE_REPO], set in app/build.gradle.kts).
+ *
+ * The newest non-draft, non-prerelease release is offered when its tag ("v1.2.3") is newer than the
+ * installed versionName, and its first .apk asset is downloaded and handed to the Android installer.
+ */
 object AppUpdater {
-    private const val RELEASES_URL = "https://api.github.com/repos/wyattabuntjer/AYN-Thor-WoW-Launcher/releases/latest"
+    private val RELEASES_URL = "https://api.github.com/repos/${BuildConfig.UPDATE_REPO}/releases/latest"
 
     data class Release(
         val version: String,
@@ -66,10 +74,12 @@ object AppUpdater {
     }.getOrNull()
 
     suspend fun check(currentVersion: String = BuildConfig.VERSION_NAME): Release? = withContext(Dispatchers.IO) {
+        // Dev builds (package app.wowds.dev) are a separate app; releases can't update them.
+        if (BuildConfig.DEBUG) return@withContext null
         runCatching {
             val request = Request.Builder()
                 .url(RELEASES_URL)
-                .header("User-Agent", "WoW-Forever-Android")
+                .header("User-Agent", "WoW-DS")
                 .header("Accept", "application/vnd.github+json")
                 .build()
             Net.http.newCall(request).execute().use { response ->
@@ -89,13 +99,38 @@ object AppUpdater {
         onProgress: (Float) -> Unit,
     ): File = withContext(Dispatchers.IO) {
         val dir = File(context.cacheDir, "updates").apply { mkdirs() }
-        val dest = File(dir, "WoW-Forever-${release.version}.apk")
-        if (dest.exists() && dest.length() == release.sizeBytes && release.sizeBytes > 0) {
-            onProgress(1f)
-            return@withContext dest
+        val dest = File(dir, "WoW-DS-${release.version}.apk")
+        if (!(dest.exists() && dest.length() == release.sizeBytes && release.sizeBytes > 0)) {
+            Net.fetchFile(release.downloadUrl, dest, onProgress)
         }
-        Net.fetchFile(release.downloadUrl, dest, onProgress)
+        onProgress(1f)
+        runCatching { verify(context, dest) }.onFailure {
+            dest.delete()
+            throw it
+        }
         dest
+    }
+
+    /**
+     * Android refuses an update signed with a different key, with only a vague "App not installed".
+     * Checking first gives a message that says what's wrong.
+     */
+    private fun verify(context: Context, apk: File) {
+        val pm = context.packageManager
+        val update = pm.getPackageArchiveInfo(apk.path, PackageManager.GET_SIGNING_CERTIFICATES)
+            ?: throw IOException("the downloaded file isn't a valid app")
+        if (update.packageName != context.packageName) {
+            throw IOException("the download is ${update.packageName}, not ${context.packageName}")
+        }
+        val installed = pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+        val ours = installed.signingInfo?.apkContentsSigners?.toSet()
+        val theirs = update.signingInfo?.apkContentsSigners?.toSet()
+        if (ours != null && theirs != null && ours != theirs) {
+            throw IOException(
+                "the update is signed with a different key than this install. " +
+                    "Uninstall WoW-DS and install the new version from the GitHub releases page.",
+            )
+        }
     }
 
     fun canInstall(context: Context): Boolean = runCatching {

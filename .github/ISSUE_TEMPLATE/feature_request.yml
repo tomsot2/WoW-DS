@@ -1,0 +1,16 @@
+name: Feature request
+description: An idea for WoW-DS, such as something for the bottom-screen pad.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would make playing better?
+      description: Describe what's awkward or missing today, ideally with how you play (gamepad, trackpad, keyboard).
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: How you'd like it to work.

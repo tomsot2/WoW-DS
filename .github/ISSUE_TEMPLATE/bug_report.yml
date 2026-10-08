@@ -1,0 +1,54 @@
+name: Bug report
+description: Something doesn't work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Please check the [Troubleshooting](https://github.com/tomsot2/WoW-DS#troubleshooting) table first.
+        WoW-DS is an unofficial community project; please don't contact Blizzard support about it.
+  - type: input
+    id: version
+    attributes:
+      label: WoW-DS version
+      description: Shown on the launcher setup screen, or in Android's app info.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: "AYN Thor, Android 13"
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: WoW client
+      options:
+        - Forever
+        - Retail
+        - Classic
+        - Not client specific
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the bottom-screen keyboard
+        2. ...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or error files
+      description: Anything from the client's `Errors/` folder, or a screenshot. Remove any personal details first.

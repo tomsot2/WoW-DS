@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Problems with Wine, DXVK or the runtime itself
+    url: https://github.com/jaredgei/wow-forever-android/issues
+    about: Issues that also happen in WoW Forever for Android are best reported there.

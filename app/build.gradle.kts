@@ -12,12 +12,24 @@ plugins {
     alias(libs.plugins.secrets.gradle)
 }
 
+// Release signing key. Locally: app/keystores/keystore.properties (never committed). In GitHub Actions the
+// release workflow writes the key from repository secrets and passes it in through these environment variables.
 val keystorePropertiesFile = rootProject.file("app/keystores/keystore.properties")
 val keystoreProperties: Properties? = if (keystorePropertiesFile.exists()) {
     Properties().apply {
         load(FileInputStream(keystorePropertiesFile))
     }
+} else if (System.getenv("RELEASE_KEYSTORE_FILE") != null) {
+    Properties().apply {
+        put("storeFile", System.getenv("RELEASE_KEYSTORE_FILE"))
+        put("storePassword", System.getenv("RELEASE_KEYSTORE_PASSWORD") ?: "")
+        put("keyAlias", System.getenv("RELEASE_KEY_ALIAS") ?: "")
+        put("keyPassword", System.getenv("RELEASE_KEY_PASSWORD") ?: "")
+    }
 } else null
+
+// The GitHub repo whose releases the in-app updater follows (owner/name).
+val updateRepo = "tomsot2/WoW-DS"
 
 android {
     namespace = "app.gamenative"
@@ -50,15 +62,20 @@ android {
     }
 
     defaultConfig {
-        applicationId = "app.aynthorwow"
+        // WoW-DS has its own package, so it installs alongside the AYN Thor WoW Launcher, WoW Forever
+        // for Android, GameNative and Winlator.
+        applicationId = "app.wowds"
 
         minSdk = 26
 
         manifestPlaceholders["screenOrientation"] = "unspecified"
         buildConfigField("boolean", "XR_BUILD", "false")
 
-        versionCode = 232
-        versionName = "2.3.2"
+        // A release is published by pushing the tag "v" + versionName (see .github/workflows/release.yml).
+        // Bump both numbers for every release; the updater offers any release whose tag is newer than this.
+        versionCode = 100
+        versionName = "1.0.0"
+        buildConfigField("String", "UPDATE_REPO", "\"$updateRepo\"")
 
         buildConfigField("boolean", "GOLD", "false")
         val iconValue = "@mipmap/ic_launcher"
@@ -120,14 +137,19 @@ android {
 
     buildTypes {
         debug {
+            // Test builds from every push install as a separate "WoW-DS Dev" app, so they never clash
+            // with the signed release (Android won't update an app with one signed by another key).
+            applicationIdSuffix = ".dev"
             isDebuggable = true
             isMinifyEnabled = false
             isShrinkResources = false
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            // Not minified: the release runs exactly the code the debug builds were tested with
+            // (Wine/Winlator code relies on reflection and JNI names that shrinking can break).
+            isMinifyEnabled = false
+            isShrinkResources = false
             signingConfig = signingConfigs.getByName(if (keystoreProperties != null) "release" else "debug")
         }
     }
