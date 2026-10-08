@@ -31,7 +31,7 @@ class ExternalActionPad(
     context: Context,
     private val xServer: XServer,
     private val theme: PadTheme,
-    touchpadViewProvider: () -> TouchpadView?,
+    private val touchpadViewProvider: () -> TouchpadView?,
 ) : LinearLayout(context) {
 
     private val density = resources.displayMetrics.density
