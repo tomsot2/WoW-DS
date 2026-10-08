@@ -17,14 +17,16 @@ import com.winlator.xserver.XServer
  *
  * Left half: a column of window shortcuts (Map, Character, Spellbook, Talents, Skills, Quest Log,
  * Social, System).
- * Right half, top to bottom: the modifier buttons (see [setModifierRow]), the 12 action buttons
- * (4 rows of 3), and a party row (Me, P1-P4) that sends F1-F5 to target yourself or a party member.
+ * Right half, top to bottom: the modifier buttons (see [setModifierRow]), the 8 target marker
+ * buttons, the 8 command buttons, and a party row (Me, P1-P4) that sends F1-F5 to target yourself or
+ * a party member. The action bars themselves live on the controller (WoW's gamepad mode).
  *
- * Every button sends WoW's default key, so the pad works with the stock bindings and needs no addon.
- * To use different keys, change the lists in the companion object.
+ * Window and party buttons send WoW's default keys, so they work with the stock bindings and need no
+ * addon. Marker and command buttons are editable [PadAction]s: a chat command such as "/tm 8", or a key
+ * for an in-game macro.
  *
- * One touch is exactly one key press and one key release. There are no macros, sequences or timed
- * repeats here: anything multi-step belongs in WoW's own macro system.
+ * One touch is exactly one key press, or one typed line. Nothing repeats or runs on a timer: anything
+ * multi-step belongs in WoW's own macro system.
  */
 class ExternalActionBarView(
     context: Context,
@@ -38,6 +40,8 @@ class ExternalActionBarView(
     private data class Slot(val label: String, val key: XKeycode, val hiddenIn: Set<WowFlavor> = emptySet())
 
     private val downKeys = mutableSetOf<XKeycode>()
+    /** Modifiers held by key-type command buttons. */
+    private val downModifiers = mutableSetOf<XKeycode>()
     private val rightColumn: LinearLayout
     private val modifierGroup: LinearLayout
 
@@ -61,7 +65,7 @@ class ExternalActionBarView(
         val pad = dp(8)
         setPadding(pad, pad, pad, pad)
 
-        // Each group of buttons sits on its own faint backing; the number block's is the strongest.
+        // Each group of buttons sits on its own faint backing; the command block's is the strongest.
         // Window buttons: one column up to SINGLE_COLUMN_MAX buttons, two columns beyond that.
         val windows = visibleWindows()
         val columns = if (windows.size > SINGLE_COLUMN_MAX) windows.chunked((windows.size + 1) / 2) else listOf(windows)
@@ -84,12 +88,19 @@ class ExternalActionBarView(
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 0.7f).apply { setMargins(0, dp(3), 0, dp(3)) }
             visibility = GONE
         }
-        val numberGroup = group(vertical = true, strong = true).apply {
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 4f).apply { setMargins(0, dp(3), 0, dp(3)) }
-            ACTION_SLOTS.chunked(3).forEach {
-                addView(keyRow(it, textSp = 26f, weight = 1f, raised = PadSettings.emphasis > 0f, hotbar = true))
+        val markerGroup = group(vertical = true, strong = false).apply {
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1.8f).apply { setMargins(0, dp(3), 0, dp(3)) }
+            PadSettings.actions(PadSettings.MARKERS).withIndex().chunked(4).forEach { row ->
+                addView(actionRow(row.map { (i, action) -> markerButton(i, action) }))
             }
-            if (!PadSettings.bool(PadSettings.SEC_NUMBERS)) visibility = GONE
+            if (!PadSettings.bool(PadSettings.SEC_MARKERS)) visibility = GONE
+        }
+        val commandGroup = group(vertical = true, strong = true).apply {
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 2.2f).apply { setMargins(0, dp(3), 0, dp(3)) }
+            PadSettings.actions(PadSettings.COMMANDS).chunked(4).forEach { row ->
+                addView(actionRow(row.map { commandButton(it) }))
+            }
+            if (!PadSettings.bool(PadSettings.SEC_COMMANDS)) visibility = GONE
         }
         val partyGroup = group(vertical = true, strong = false).apply {
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1.2f).apply { setMargins(0, dp(3), 0, dp(3)) }
@@ -98,7 +109,8 @@ class ExternalActionBarView(
         }
         rightColumn = column(RIGHT_WEIGHT).apply {
             addView(modifierGroup)
-            addView(numberGroup)
+            addView(markerGroup)
+            addView(commandGroup)
             addView(partyGroup)
         }
         // "Swap sides" puts the window column on the right.
@@ -136,45 +148,43 @@ class ExternalActionBarView(
         layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, weight)
     }
 
-    /** [muted] dims the button trim; the action buttons (1-9, 0, -, =) are left at full strength. */
-    private fun keyRow(
-        slots: List<Slot>,
-        textSp: Float,
-        weight: Float,
-        muted: Boolean = false,
-        raised: Boolean = false,
-        hotbar: Boolean = false,
-    ): LinearLayout {
-        return LinearLayout(context).apply {
-            orientation = HORIZONTAL
-            isMotionEventSplittingEnabled = true
-            // Rows share the column's height by weight, so everything always fits.
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, weight)
-            slots.forEach { addView(createButton(it, textSp, muted, raised, hotbar)) }
+    /** [muted] dims the button trim. */
+    private fun keyRow(slots: List<Slot>, textSp: Float, weight: Float, muted: Boolean = false): LinearLayout =
+        actionRow(slots.map { createButton(it, textSp, muted) }, weight)
+
+    /** A row of buttons sharing the group's height by weight, so everything always fits. */
+    private fun actionRow(buttons: List<View>, weight: Float = 1f): LinearLayout = LinearLayout(context).apply {
+        orientation = HORIZONTAL
+        isMotionEventSplittingEnabled = true
+        layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, weight)
+        buttons.forEach { addView(it) }
+    }
+
+    private fun label(text: String, textSp: Float, muted: Boolean, raised: Boolean = false) = TextView(context).apply {
+        this.text = text
+        contentDescription = text
+        gravity = Gravity.CENTER
+        setTextColor(theme.text)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, textSp * PadSettings.labelScale)
+        typeface = theme.typeface
+        maxLines = 2
+        background = createKeyBackground(muted, raised)
+        layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply {
+            val margin = dp(3)
+            setMargins(margin, margin, margin, margin)
         }
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun createButton(slot: Slot, textSp: Float, muted: Boolean, raised: Boolean, hotbar: Boolean): View {
-        return TextView(context).apply {
-            text = slot.label
-            contentDescription = slot.label
-            gravity = Gravity.CENTER
-            setTextColor(theme.text)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, textSp * PadSettings.labelScale)
-            typeface = theme.typeface
+    private fun createButton(slot: Slot, textSp: Float, muted: Boolean): View =
+        label(slot.label, textSp, muted).apply {
             maxLines = 1
-            background = createKeyBackground(muted, raised)
-            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply {
-                val margin = dp(3)
-                setMargins(margin, margin, margin, margin)
-            }
             setOnTouchListener { view, event ->
                 when (event.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
                         view.isPressed = true
                         PadSettings.haptic(view)
-                        pressKey(keyFor(slot), if (hotbar) hotbarModifier() else null)
+                        pressKey(keyFor(slot))
                     }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                         view.isPressed = false
@@ -184,35 +194,68 @@ class ExternalActionBarView(
                 true
             }
         }
+
+    /** A target marker button: the marker's symbol in its color. */
+    private fun markerButton(index: Int, action: PadAction): View {
+        val (symbol, name, color) = PadSettings.MARKER_STYLES[index]
+        return actionButton(action, textSp = 22f, muted = true).apply {
+            text = symbol
+            contentDescription = action.label.ifBlank { name }
+            setTextColor(color)
+        }
     }
+
+    private fun commandButton(action: PadAction): View = actionButton(action, textSp = 13f, muted = false, raised = PadSettings.emphasis > 0f)
+
+    /**
+     * A button that runs a [PadAction]. A key action holds its key (and modifiers) for as long as the
+     * button is held. A chat command is typed when the finger lifts, so sliding off the button cancels it.
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun actionButton(action: PadAction, textSp: Float, muted: Boolean, raised: Boolean = false): TextView =
+        label(action.label, textSp, muted, raised).apply {
+            val keycode = action.keycode
+            val modifiers = action.modifiers.mapNotNull { PadAction.MODIFIER_KEYS[it] }
+            setOnTouchListener { view, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        view.isPressed = true
+                        PadSettings.haptic(view)
+                        if (action.isKey && keycode != null) {
+                            modifiers.forEach { if (downModifiers.add(it)) xServer.injectKeyPress(it) }
+                            pressKey(keycode)
+                        }
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        val inside = event.actionMasked == MotionEvent.ACTION_UP &&
+                            event.x >= 0 && event.y >= 0 && event.x <= view.width && event.y <= view.height
+                        view.isPressed = false
+                        if (action.isKey && keycode != null) {
+                            releaseKey(keycode)
+                            modifiers.reversed().forEach { if (downModifiers.remove(it)) xServer.injectKeyRelease(it) }
+                        } else if (inside && action.text.isNotBlank()) {
+                            // Armed one-shot modifiers would otherwise turn the typed text into capitals or shortcuts.
+                            onKeyTapped()
+                            ChatTyper.type(xServer, action.text)
+                        }
+                    }
+                }
+                true
+            }
+        }
 
     /** The key a button sends: the user's remap if there is one, otherwise the default. */
     private fun keyFor(slot: Slot): XKeycode =
         PadSettings.remapped(slot.label)?.let { name -> runCatching { XKeycode.valueOf(name) }.getOrNull() } ?: slot.key
 
-    /** "Hotbar page": the number buttons also hold Shift, Ctrl or Alt, to reach the other action bars. */
-    private fun hotbarModifier(): XKeycode? = when (PadSettings.int(PadSettings.HOTBAR_PAGE)) {
-        1 -> XKeycode.KEY_SHIFT_L
-        2 -> XKeycode.KEY_CTRL_L
-        3 -> XKeycode.KEY_ALT_L
-        else -> null
-    }
-
-    private val pageModifiers = mutableMapOf<XKeycode, XKeycode>()
-
-    private fun pressKey(key: XKeycode, pageModifier: XKeycode? = null) {
+    private fun pressKey(key: XKeycode) {
         if (!downKeys.add(key)) return
-        if (pageModifier != null) {
-            pageModifiers[key] = pageModifier
-            xServer.injectKeyPress(pageModifier)
-        }
         xServer.injectKeyPress(key)
     }
 
     private fun releaseKey(key: XKeycode) {
         if (!downKeys.remove(key)) return
         xServer.injectKeyRelease(key)
-        pageModifiers.remove(key)?.let { xServer.injectKeyRelease(it) }
         onKeyTapped()
     }
 
@@ -224,8 +267,8 @@ class ExternalActionBarView(
     /** Never leave a key stuck down if the display goes away or the game closes mid-press. */
     override fun onDetachedFromWindow() {
         downKeys.toList().forEach { xServer.injectKeyRelease(it) }
-        pageModifiers.values.forEach { xServer.injectKeyRelease(it) }
-        pageModifiers.clear()
+        downModifiers.forEach { xServer.injectKeyRelease(it) }
+        downModifiers.clear()
         downKeys.clear()
         super.onDetachedFromWindow()
     }
@@ -237,7 +280,7 @@ class ExternalActionBarView(
             PANELS.filter { WowFlavor.current !in it.hiddenIn }.map { it.label }
 
         fun remappableButtons(): List<Pair<String, XKeycode>> =
-            (PANELS + ACTION_SLOTS + PARTY_SLOTS).map { it.label to it.key }
+            (PANELS + PARTY_SLOTS).map { it.label to it.key }
 
         // Width split between the window-shortcut column and the F-key/number/modifier block.
         // A smaller RIGHT_WEIGHT squeezes that block toward the right edge, within reach of a right thumb.
@@ -273,22 +316,6 @@ class ExternalActionBarView(
             Slot("P2", XKeycode.KEY_F3),
             Slot("P3", XKeycode.KEY_F4),
             Slot("P4", XKeycode.KEY_F5),
-        )
-
-        // WoW's default bindings for Action Bar 1, slots 1 to 12.
-        private val ACTION_SLOTS = listOf(
-            Slot("1", XKeycode.KEY_1),
-            Slot("2", XKeycode.KEY_2),
-            Slot("3", XKeycode.KEY_3),
-            Slot("4", XKeycode.KEY_4),
-            Slot("5", XKeycode.KEY_5),
-            Slot("6", XKeycode.KEY_6),
-            Slot("7", XKeycode.KEY_7),
-            Slot("8", XKeycode.KEY_8),
-            Slot("9", XKeycode.KEY_9),
-            Slot("0", XKeycode.KEY_0),
-            Slot("-", XKeycode.KEY_MINUS),
-            Slot("=", XKeycode.KEY_EQUAL),
         )
     }
 }

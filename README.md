@@ -16,7 +16,7 @@ This uses Blizzard's own **Windows ARM64** WoW clients, so the game itself runs 
 
 - **Gamepad first:** WoW's native gamepad mode drives the game, with nothing in the way. Every controller button, including R3, goes straight to WoW.
 - **Three clients in one app:** Forever (beta), Retail and Classic, each with its own game folder, in-app updates and Play button.
-- **Second-screen companion pad:** a trackpad, a full QWERTY keyboard, party targeting (Me, P1-P4), hotbar buttons, window shortcuts (Map, Character, Spellbook, Bags, Group Finder and more) and modifiers, with a full settings page. It dims itself when you're not using it. See [The Thor button pad](#the-thor-button-pad).
+- **Second-screen companion pad:** a trackpad, a full QWERTY keyboard with a chat bar and quick phrases, one-tap target markers, your own command buttons, party targeting (Me, P1-P4) and window shortcuts (Map, Character, Spellbook, Bags, Group Finder and more), with a full settings page. It dims itself when idle and shifts slightly to protect the OLED. See [The Thor button pad](#the-thor-button-pad).
 - **World of Warcraft look:** a stone-and-gold launcher and in-game quick menu, with the chosen client named on the Play button and boot screen.
 - **Updates itself:** new versions published here are offered and installed from inside the app.
 - **Its own app:** package `app.wowds`, so it installs next to the AYN Thor WoW Launcher, WoW Forever for Android, GameNative and Winlator.
@@ -99,19 +99,38 @@ Open the app. Pick **Forever**, **Retail** or **Classic** at the top of the laun
 
 ## The Thor button pad
 
-On the AYN Thor the bottom screen shows a touch pad while you play. The header has three buttons: **trackpad**, **settings (gear)** and **keyboard**.
+On the AYN Thor the bottom screen shows a touch pad while you play. It's built to sit next to WoW's own gamepad controls: the controller handles movement, combat and the action bars, and the pad covers what's awkward on a controller. The header has four buttons: **trackpad**, **chat**, **settings (gear)** and **keyboard**.
 
-- **Trackpad:** a touch mouse with Shift, Ctrl and Alt always available. Drag two fingers up or down to scroll (quest log, bags, chat).
+- **Window shortcuts:** Map, Character, Spellbook, Talents, Skills, Quest Log, Social, System, Bags, Group Finder, Achievements and Guild, one tap each. When more than eight are shown, they split into two columns.
+- **Target markers:** Skull, Cross, Square, Moon, Triangle, Diamond, Circle and Star. One tap marks your target, instead of cycling through markers on the controller.
+- **Command buttons:** eight buttons you can set yourself. They start as Ready check, Roll, Follow, Focus, Hearthstone, Stop cast, Thank and Wave.
+- **Party row:** **Me**, **P1**-**P4**, WoW's default F1-F5 party targeting.
+- **Chat:** the chat button opens WoW's chat box with the keyboard, and closes the keyboard when you send. Above the keyboard is a chat bar: **Say, Party, Inst, Raid, Guild, Whisper, Reply** start a message in that channel, and the quick phrases (ty, np, brb, omw, ready?, gg, all editable) send straight to the channel picked with **To**.
 - **Keyboard:** a full US QWERTY layout with standard key sizes and stagger, Shift (applies to the next key), Caps Lock, Esc and arrow keys.
-- **Buttons:** hotbar numbers, a party row (**Me**, **P1**-**P4**, WoW's default F1-F5 party targeting), modifiers and window shortcuts (Map, Character, Spellbook, Talents, Skills, Quest Log, Social, System, Bags, Group Finder, Achievements, Guild). When more than eight window buttons are shown, they split into two columns.
-- **Settings page** (the gear) lets you change:
-  - which modifier keys, window buttons and pad sections are shown (the rest resize to fill the space)
-  - swap left/right sides, hotbar pages, label size, haptics and double-tap lock time
-  - dimming when idle (off, or after 15 s to 2 min) and how dark it goes. When dimmed, the first tap only wakes the pad
-  - trackpad speed, acceleration and tap-to-click
-  - controller stick deadzone
-  - remapping of any button, three saved profiles, backup to the clipboard, and reset
-  - which client launches next
+- **Trackpad:** a touch mouse with Shift, Ctrl and Alt always available. Drag two fingers up or down to scroll (quest log, bags, chat).
+- **Easy on the screen:** the pad dims when you're not using it, and moves a few pixels every few minutes so nothing burns into the OLED.
+
+### Marker and command buttons
+
+Each marker, command and quick phrase can be changed in the pad's settings, under **Buttons and phrases**, using the pad's own keyboard. A button does one of two things:
+
+- **Chat command:** types a command such as `/roll` or `/use Hearthstone` into the chat box and sends it. The markers use `/tm` (for example `/tm 8` for Skull). If your client doesn't have `/tm`, bind the markers under **Key Bindings** in game and switch the marker buttons to those keys.
+- **Key:** presses one key, with Shift, Ctrl or Alt if you like (for example Ctrl+F1). Bind that key to one of your own macros in WoW, and the button runs it. This needs no typing, so it's the most direct option.
+
+Either way, one tap is exactly one command or one key press. Nothing repeats, loops or runs on a timer.
+
+### Settings
+
+The settings page (the gear) lets you change:
+
+- which modifier keys, window buttons and pad sections (windows, markers, commands, party) are shown; the rest resize to fill the space
+- the marker buttons, command buttons and quick phrases
+- swap left/right sides, label size, haptics and double-tap lock time
+- dimming when idle (off, or after 15 s to 2 min) and how dark it goes, and burn-in protection. When dimmed, the first tap only wakes the pad
+- trackpad speed, acceleration and tap-to-click
+- controller stick deadzone
+- remapping of the window and party buttons, three saved profiles, backup to the clipboard, and reset
+- which client launches next
 
 ---
 

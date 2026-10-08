@@ -24,7 +24,8 @@ object PadSettings {
     const val MOD_CTRL = "mod_ctrl"
     const val MOD_ALT = "mod_alt"
     const val SEC_WINDOWS = "sec_windows"
-    const val SEC_NUMBERS = "sec_numbers"
+    const val SEC_MARKERS = "sec_markers"
+    const val SEC_COMMANDS = "sec_commands"
     const val SEC_PARTY = "sec_fkeys"
     const val SWAP_SIDES = "swap_sides"
     const val MUTED = "muted_borders"
@@ -32,7 +33,8 @@ object PadSettings {
     const val LABEL_SCALE = "label_scale"
     const val HAPTICS = "haptics"
     const val DOUBLE_TAP_MS = "double_tap_ms"
-    const val HOTBAR_PAGE = "hotbar_page"
+    const val BURN_IN_SHIFT = "burn_in_shift"
+    const val PHRASE_CHANNEL = "phrase_channel"
     const val TP_SPEED = "trackpad_speed"
     const val TP_ACCEL = "trackpad_accel"
     const val TP_TAP = "trackpad_tap"
@@ -51,13 +53,53 @@ object PadSettings {
 
     fun windowKey(label: String) = "win_$label"
 
+    /** Chat channels the quick phrases can go to: label and slash command. */
+    val PHRASE_CHANNELS = listOf("Say" to "/s", "Party" to "/p", "Instance" to "/i", "Raid" to "/ra", "Guild" to "/g")
+
+    // Editable button lists, each stored as a JSON array of PadAction.
+    const val MARKERS = "markers"
+    const val COMMANDS = "commands"
+    const val PHRASES = "phrases"
+
+    /**
+     * Target markers in the order shown (4 per row), with WoW's marker numbers for /tm.
+     * The symbol and color stand in for the marker icon.
+     */
+    val MARKER_STYLES = listOf(
+        Triple("☠", "Skull", 0xFFF2F2F2.toInt()),
+        Triple("✖", "Cross", 0xFFE5403A.toInt()),
+        Triple("■", "Square", 0xFF4C9BFF.toInt()),
+        Triple("☾", "Moon", 0xFFB8D2E6.toInt()),
+        Triple("▲", "Triangle", 0xFF55D24A.toInt()),
+        Triple("◆", "Diamond", 0xFFC06BE6.toInt()),
+        Triple("●", "Circle", 0xFFFF9A2E.toInt()),
+        Triple("★", "Star", 0xFFFFE14A.toInt()),
+    )
+    private val MARKER_NUMBERS = listOf(8, 7, 6, 5, 4, 3, 2, 1)
+
+    private val ACTION_DEFAULTS: Map<String, List<PadAction>> = mapOf(
+        MARKERS to MARKER_STYLES.mapIndexed { i, (_, name, _) -> PadAction(name, text = "/tm ${MARKER_NUMBERS[i]}") },
+        COMMANDS to listOf(
+            PadAction("Ready check", text = "/readycheck"),
+            PadAction("Roll", text = "/roll"),
+            PadAction("Follow", text = "/follow"),
+            PadAction("Focus", text = "/focus"),
+            PadAction("Hearthstone", text = "/use Hearthstone"),
+            PadAction("Stop cast", text = "/stopcasting"),
+            PadAction("Thank", text = "/thank"),
+            PadAction("Wave", text = "/wave"),
+        ),
+        PHRASES to listOf("ty", "np", "brb", "omw", "ready?", "gg").map { PadAction(it, text = it) },
+    )
+
     /** Defaults. Decimals are stored as tenths (speeds) or percent (ramp, deadzone, emphasis). */
     private val DEFAULTS: Map<String, Any> = linkedMapOf<String, Any>(
         MOD_SHIFT to true,
         MOD_CTRL to true,
         MOD_ALT to true,
         SEC_WINDOWS to true,
-        SEC_NUMBERS to true,
+        SEC_MARKERS to true,
+        SEC_COMMANDS to true,
         SEC_PARTY to true,
         SWAP_SIDES to false,
         MUTED to 55,
@@ -65,7 +107,8 @@ object PadSettings {
         LABEL_SCALE to 100,
         HAPTICS to 2,
         DOUBLE_TAP_MS to 350,
-        HOTBAR_PAGE to 0,
+        BURN_IN_SHIFT to true,
+        PHRASE_CHANNEL to 1,
         TP_SPEED to 7,
         TP_ACCEL to 10,
         TP_TAP to true,
@@ -145,22 +188,45 @@ object PadSettings {
         version++
     }
 
+    // Marker buttons, command buttons and quick phrases.
+
+    /** The buttons in list [listKey] ([MARKERS], [COMMANDS] or [PHRASES]); always the default count. */
+    fun actions(listKey: String): List<PadAction> {
+        val defaults = ACTION_DEFAULTS.getValue(listKey)
+        val saved = PadAction.listFromJson(prefs?.getString(listKey, null)) ?: return defaults
+        return defaults.indices.map { saved.getOrNull(it) ?: defaults[it] }
+    }
+
+    fun defaultAction(listKey: String, index: Int): PadAction = ACTION_DEFAULTS.getValue(listKey)[index]
+
+    fun setAction(listKey: String, index: Int, action: PadAction) {
+        val list = actions(listKey).toMutableList()
+        list[index] = action
+        prefs?.edit()?.putString(listKey, PadAction.listToJson(list))?.apply()
+        version++
+    }
+
+    /** The chat command the quick phrases are sent with, e.g. "/p". */
+    val phraseChannel: Pair<String, String> get() = PHRASE_CHANNELS.getOrElse(int(PHRASE_CHANNEL)) { PHRASE_CHANNELS[1] }
+
     // Reset, profiles, export and import.
 
     fun resetAll() {
         prefs?.edit()?.apply {
             DEFAULTS.keys.forEach { remove(it) }
+            ACTION_DEFAULTS.keys.forEach { remove(it) }
             remove(REMAP)
         }?.apply()
         version++
     }
 
-    /** Every setting and the remap list as one JSON object. */
+    /** Every setting, the remap list and the button lists as one JSON object. */
     fun snapshot(): JSONObject = JSONObject().apply {
         DEFAULTS.keys.forEach { key ->
             if (DEFAULTS[key] is Boolean) put(key, bool(key)) else put(key, int(key))
         }
         put(REMAP, remapJson())
+        ACTION_DEFAULTS.keys.forEach { key -> put(key, org.json.JSONArray(actions(key).map { it.toJson() })) }
     }
 
     /** Applies a [snapshot]. Unknown or mistyped entries are ignored. */
@@ -172,6 +238,7 @@ object PadSettings {
             else editor.putInt(key, json.optInt(key, def as Int))
         }
         json.optJSONObject(REMAP)?.let { editor.putString(REMAP, it.toString()) }
+        ACTION_DEFAULTS.keys.forEach { key -> json.optJSONArray(key)?.let { editor.putString(key, it.toString()) } }
         editor.apply()
         version++
     }

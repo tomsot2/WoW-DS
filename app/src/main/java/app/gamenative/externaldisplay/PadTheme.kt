@@ -22,7 +22,7 @@ data class PadTheme(
     val borderBright: Int,
     val text: Int,
     val textPressed: Int,
-    /** Slightly lighter resting face, for the buttons that should stand out (the action buttons). */
+    /** Slightly lighter resting face, for the buttons that should stand out (the command buttons). */
     val raisedTop: Int = 0xFF3D3226.toInt(),
     val raisedBottom: Int = 0xFF261D15.toInt(),
 ) {
@@ -33,13 +33,13 @@ data class PadTheme(
     /** Faint gold panel behind a group of buttons. [strong] is for the main group. */
     fun groupBackground(density: Float, strong: Boolean): Drawable = GradientDrawable().apply {
         cornerRadius = 12 * density
-        // The number block's backing follows the "number emphasis" setting (100% = the standard look).
+        // The command block's backing follows the "Command emphasis" setting (100% = the standard look).
         val scale = if (strong) PadSettings.emphasis else 1f
         setColor(withAlpha(border, ((if (strong) 0x21 else 0x0F) * scale).toInt().coerceIn(0, 0xFF)))
         setStroke(density.toInt().coerceAtLeast(1), withAlpha(border, ((if (strong) 0x59 else 0x2E) * scale).toInt().coerceIn(0, 0xFF)))
     }
 
-    /** Dim, thinner trim for secondary buttons, so the action buttons stand out. */
+    /** Dim, thinner trim for secondary buttons, so the command buttons stand out. */
     private val borderMuted: Int get() = blend(border, keyBottom, PadSettings.mutedAmount)
     private val borderInnerMuted: Int get() = blend(borderInner, keyBottom, PadSettings.mutedAmount)
 

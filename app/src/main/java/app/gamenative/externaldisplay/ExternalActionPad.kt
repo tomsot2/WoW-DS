@@ -61,6 +61,18 @@ class ExternalActionPad(
     private var swallowingWakeTouch = false
     private val dimRunnable = Runnable { setDimmed(true) }
 
+    private lateinit var chatButton: ImageButton
+    private lateinit var keyboardPanel: LinearLayout
+    // True while the keyboard is up because of the Chat button; sending the message then closes it.
+    private var openedForChat = false
+
+    private val shiftRunnable: Runnable = Runnable {
+        val range = SHIFT_RANGE_DP * density
+        translationX = (Math.random().toFloat() * 2 - 1) * range
+        translationY = (Math.random().toFloat() * 2 - 1) * range
+        scheduleShift()
+    }
+
     init {
         PadSettings.init(context)
         orientation = VERTICAL
@@ -115,14 +127,25 @@ class ExternalActionPad(
             )
             visibility = View.GONE
         }
-        keyboardView = ExternalOnScreenKeyboardView(context, xServer).apply {
+        keyboardView = ExternalOnScreenKeyboardView(context, xServer, theme).apply {
+            layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            // Opened with the Chat button: sending the message closes the keyboard again.
+            onEnter = { if (openedForChat) setKeyboard(false) }
+        }
+        // The chat bar (channels and quick phrases) sits on top of the keyboard.
+        keyboardPanel = LinearLayout(context).apply {
+            orientation = VERTICAL
             layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 .apply { gravity = Gravity.BOTTOM }
+            setBackgroundColor(theme.background)
+            addView(chatBar())
+            addView(keyboardView)
             visibility = View.GONE
         }
 
         trackpadButton = circleButton(R.drawable.icon_trackpad, "Trackpad") { setTrackpad(trackpadPanel.visibility != View.VISIBLE) }
-        keyboardButton = circleButton(R.drawable.icon_keyboard, "Keyboard") { setKeyboard(keyboardView.visibility != View.VISIBLE) }
+        chatButton = circleButton(R.drawable.icon_chat, "Chat") { openChat() }
+        keyboardButton = circleButton(R.drawable.icon_keyboard, "Keyboard") { setKeyboard(keyboardPanel.visibility != View.VISIBLE) }
         settingsButton = circleButton(R.drawable.icon_settings, "Settings") { setSettings(!settingsOpen) }
         settingsView = ExternalPadSettingsView(context, theme).apply {
             layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -131,7 +154,7 @@ class ExternalActionPad(
 
         val header = LinearLayout(context).apply {
             orientation = HORIZONTAL
-            // The two header buttons sit on a faint gold backing, like the button groups below.
+            // The header buttons sit on a faint gold backing, like the button groups below.
             background = theme.groupBackground(density, strong = false)
             val side = (8 * density).toInt()
             layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
@@ -140,10 +163,11 @@ class ExternalActionPad(
             val inset = (4 * density).toInt()
             setPadding(inset, inset, inset, inset)
             addView(trackpadButton)
+            addView(chatButton)
             addView(settingsButton)
             addView(keyboardButton)
         }
-        // Modifier buttons on the pad (above the number block) follow the "modifier keys shown" setting.
+        // Modifier buttons on the pad (above the marker buttons) follow the "modifier keys shown" setting.
         // With none showing, the row and its backing stay out of the way.
         padModifierRow = LinearLayout(context).apply {
             orientation = HORIZONTAL
@@ -170,7 +194,7 @@ class ExternalActionPad(
             layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
             addView(padView)
             addView(trackpadPanel)
-            addView(keyboardView)
+            addView(keyboardPanel)
             addView(settingsView)
         }
         addView(header)
@@ -178,6 +202,94 @@ class ExternalActionPad(
         // The dim time or amount may have just changed in settings.
         setDimmed(false)
         scheduleDim()
+        scheduleShift()
+    }
+
+    /**
+     * Two rows above the keyboard. Channel buttons type the channel's slash command ("/p ") and leave
+     * the chat box open for the rest of the message. Phrase buttons send a whole message to the channel
+     * picked with the "To" button.
+     */
+    private fun chatBar(): LinearLayout {
+        fun barButton(text: String, onTap: (TextView) -> Unit) = TextView(context).apply {
+            this.text = text
+            gravity = Gravity.CENTER
+            maxLines = 1
+            setTextColor(theme.text)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = theme.typeface
+            background = theme.buttonStates(density, 8f, muted = true)
+            layoutParams = LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply {
+                val m = (3 * density).toInt()
+                setMargins(m, m, m, m)
+            }
+            setOnClickListener {
+                PadSettings.haptic(it)
+                onTap(this)
+            }
+        }
+        fun row() = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (42 * density).toInt())
+        }
+        val channels = row().apply {
+            CHAT_CHANNELS.forEach { (label, command) ->
+                addView(barButton(label) { ChatTyper.type(xServer, "$command ", send = false) })
+            }
+        }
+        val phrases = row().apply {
+            addView(
+                barButton("To: ${PadSettings.phraseChannel.first}") { b ->
+                    val next = (PadSettings.int(PadSettings.PHRASE_CHANNEL) + 1) % PadSettings.PHRASE_CHANNELS.size
+                    PadSettings.set(PadSettings.PHRASE_CHANNEL, next)
+                    b.text = "To: ${PadSettings.phraseChannel.first}"
+                }.apply { (layoutParams as LayoutParams).weight = 1.4f },
+            )
+            PadSettings.actions(PadSettings.PHRASES).forEach { phrase ->
+                addView(
+                    barButton(phrase.label) {
+                        if (phrase.text.isBlank()) return@barButton
+                        ChatTyper.type(xServer, "${PadSettings.phraseChannel.second} ${phrase.text}")
+                        if (openedForChat) setKeyboard(false)
+                    },
+                )
+            }
+        }
+        return LinearLayout(context).apply {
+            orientation = VERTICAL
+            val side = (5 * density).toInt()
+            setPadding(side, side, side, 0)
+            addView(channels)
+            addView(phrases)
+        }
+    }
+
+    /** The Chat button: opens WoW's chat box (Enter) with the keyboard, or closes the keyboard again. */
+    private fun openChat() {
+        if (keyboardPanel.visibility == View.VISIBLE) {
+            setKeyboard(false)
+            return
+        }
+        releaseModifiers()
+        xServer.injectKeyPress(XKeycode.KEY_ENTER)
+        xServer.injectKeyRelease(XKeycode.KEY_ENTER)
+        setKeyboard(true)
+        openedForChat = true
+        styleButton(chatButton, true)
+    }
+
+    /**
+     * Burn-in protection: every few minutes the whole pad moves to a new spot a few pixels away, so no
+     * edge sits on the same OLED pixels for hours. It's too small a move to notice.
+     */
+    private fun scheduleShift() {
+        removeCallbacks(shiftRunnable)
+        if (PadSettings.bool(PadSettings.BURN_IN_SHIFT)) {
+            postDelayed(shiftRunnable, SHIFT_INTERVAL_MS)
+        } else {
+            translationX = 0f
+            translationY = 0f
+        }
     }
 
     /**
@@ -361,6 +473,7 @@ class ExternalActionPad(
     /** Never leave a modifier stuck down if the display goes away. */
     override fun onDetachedFromWindow() {
         removeCallbacks(dimRunnable)
+        removeCallbacks(shiftRunnable)
         heldModifiers.toList().forEach { xServer.injectKeyRelease(it) }
         heldModifiers.clear()
         lockedModifiers.clear()
@@ -388,10 +501,12 @@ class ExternalActionPad(
             setTrackpad(false)
             setSettings(false)
         }
-        keyboardView.visibility = if (on) View.VISIBLE else View.GONE
+        keyboardPanel.visibility = if (on) View.VISIBLE else View.GONE
         // With the keyboard up, the space above it is left blank (just the pad background).
         padView.visibility = if (on) View.GONE else View.VISIBLE
+        openedForChat = false
         styleButton(keyboardButton, on)
+        styleButton(chatButton, false)
     }
 
     /**
@@ -440,5 +555,16 @@ class ExternalActionPad(
     private fun styleButton(button: ImageButton, active: Boolean) {
         button.background = theme.buttonBackground(density, 12f, active, muted = true)
         button.setColorFilter(if (active) theme.textPressed else theme.text)
+    }
+
+    private companion object {
+        /** Chat bar channel buttons: label and the slash command typed. */
+        val CHAT_CHANNELS = listOf(
+            "Say" to "/s", "Party" to "/p", "Inst" to "/i", "Raid" to "/ra", "Guild" to "/g", "Whisper" to "/w", "Reply" to "/r",
+        )
+
+        // Burn-in protection: how often the pad moves, and how far it can move from its home position.
+        const val SHIFT_INTERVAL_MS = 3 * 60 * 1000L
+        const val SHIFT_RANGE_DP = 3f
     }
 }

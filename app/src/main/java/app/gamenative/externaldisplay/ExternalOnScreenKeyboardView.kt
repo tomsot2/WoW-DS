@@ -12,11 +12,27 @@ import app.gamenative.R
 import com.winlator.xserver.XKeycode
 import com.winlator.xserver.XServer
 
+/**
+ * The pad's on-screen keyboard. Normally every key goes to the game. With [localInput] set, keys go to
+ * that callback instead (the pad's own text fields, such as the button editor in settings), and nothing
+ * reaches the game.
+ */
 class ExternalOnScreenKeyboardView(
     context: Context,
-    private val xServer: XServer,
+    private val xServer: XServer?,
     private val theme: PadTheme = PadTheme.DEFAULT,
+    private val localInput: ((LocalKey) -> Unit)? = null,
 ) : LinearLayout(context) {
+
+    /** What a key produces in local mode. */
+    sealed interface LocalKey {
+        data class Text(val text: String) : LocalKey
+        data object Backspace : LocalKey
+        data object Enter : LocalKey
+    }
+
+    /** Called after Enter is sent to the game (not in local mode). */
+    var onEnter: (() -> Unit)? = null
 
     private data class KeySpec(
         val normalLabel: String,
@@ -204,6 +220,10 @@ class ExternalOnScreenKeyboardView(
     }
 
     private fun onKeyDown(spec: KeySpec) {
+        localInput?.let { output ->
+            onLocalKeyDown(spec, output)
+            return
+        }
         when (spec.action) {
             Action.SHIFT, Action.CAPS -> Unit
             Action.BACKSPACE -> pressKey(XKeycode.KEY_BKSP)
@@ -237,7 +257,7 @@ class ExternalOnScreenKeyboardView(
                 refreshLabels()
             }
             Action.BACKSPACE -> releaseKey(XKeycode.KEY_BKSP)
-            Action.ENTER -> releaseKey(XKeycode.KEY_ENTER)
+            Action.ENTER -> if (releaseKey(XKeycode.KEY_ENTER)) onEnter?.invoke()
             Action.SPACE -> releaseKey(XKeycode.KEY_SPACE)
             Action.TAB -> releaseKey(XKeycode.KEY_TAB)
             Action.ESC -> releaseKey(XKeycode.KEY_ESC)
@@ -246,6 +266,23 @@ class ExternalOnScreenKeyboardView(
             Action.ARROW_RIGHT -> releaseKey(XKeycode.KEY_RIGHT)
             Action.ARROW_UP -> releaseKey(XKeycode.KEY_UP)
             Action.INPUT -> spec.keycode?.let { releaseKey(it) }
+        }
+    }
+
+    /** Local mode: a key produces its character (or Backspace/Enter) for the pad's own text field. */
+    private fun onLocalKeyDown(spec: KeySpec, output: (LocalKey) -> Unit) {
+        when (spec.action) {
+            Action.INPUT -> {
+                output(LocalKey.Text(if (isShifted(spec) && spec.shiftedLabel != null) spec.shiftedLabel else spec.normalLabel))
+                if (shiftOn) {
+                    shiftOn = false
+                    refreshLabels()
+                }
+            }
+            Action.SPACE -> output(LocalKey.Text(" "))
+            Action.BACKSPACE -> output(LocalKey.Backspace)
+            Action.ENTER -> output(LocalKey.Enter)
+            else -> Unit
         }
     }
 
@@ -266,6 +303,7 @@ class ExternalOnScreenKeyboardView(
     }
 
     private fun pressKey(key: XKeycode, withShift: Boolean = false) {
+        val xServer = xServer ?: return
         if (!downKeys.add(key)) return
         val shiftWasDown = xServer.keyboard.modifiersMask.isSet(1)
         if (withShift && !shiftWasDown) xServer.injectKeyPress(XKeycode.KEY_SHIFT_L)
@@ -273,16 +311,18 @@ class ExternalOnScreenKeyboardView(
         if (withShift && !shiftWasDown) xServer.injectKeyRelease(XKeycode.KEY_SHIFT_L)
     }
 
-    private fun releaseKey(key: XKeycode) {
-        if (!downKeys.remove(key)) return
-        xServer.injectKeyRelease(key)
+    /** Returns true if the key was down and has now been released. */
+    private fun releaseKey(key: XKeycode): Boolean {
+        if (!downKeys.remove(key)) return false
+        xServer?.injectKeyRelease(key)
+        return true
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     override fun onDetachedFromWindow() {
         downKeys.toList().forEach { key ->
-            xServer.injectKeyRelease(key)
+            xServer?.injectKeyRelease(key)
         }
         downKeys.clear()
         super.onDetachedFromWindow()

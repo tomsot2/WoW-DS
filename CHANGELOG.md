@@ -4,6 +4,21 @@ All notable changes to WoW-DS are listed here. The format follows [Keep a Change
 
 Each version's section becomes its GitHub release notes, which the app also shows in its update dialog.
 
+## [1.1.0]
+
+The bottom-screen pad now covers what's awkward with WoW's gamepad controls: chat, raid markers and the odd command.
+
+### Added
+- **Chat button** in the pad's header. It opens WoW's chat box with the keyboard, and the keyboard closes again when you send.
+- **Chat bar** above the keyboard. **Say, Party, Inst, Raid, Guild, Whisper, Reply** start a message in that channel. **Quick phrases** (ty, np, brb, omw, ready?, gg) send in one tap to the channel picked with **To**.
+- **Target marker buttons:** Skull, Cross, Square, Moon, Triangle, Diamond, Circle and Star mark your target in one tap (`/tm`).
+- **Command buttons:** eight buttons that start as Ready check, Roll, Follow, Focus, Hearthstone, Stop cast, Thank and Wave.
+- **Edit any marker, command or phrase** in the pad's settings, under **Buttons and phrases**, with the pad's own keyboard. A button can type a chat command, or press one key (with Shift, Ctrl or Alt) that you've bound to an in-game macro. Profiles and backups include them.
+- **Burn-in protection:** the pad moves a few pixels every few minutes, so nothing sits on the same OLED pixels for hours. It can be turned off in settings.
+
+### Changed
+- The markers and command buttons replace the 1-9, 0, - and = hotbar grid, since the controller already reaches the action bars. The "Hotbar pages" setting is gone, and "Number emphasis" is now "Command emphasis".
+
 ## [1.0.0]
 
 The first release of WoW-DS, a fork of [AYN Thor WoW Launcher](https://github.com/wyattabuntjer/AYN-Thor-WoW-Launcher) 2.3.2 by wyattabuntjer, tuned for World of Warcraft's native gamepad controls.
@@ -28,3 +43,4 @@ WoW-DS is a new app (`app.wowds`). It installs next to the AYN Thor WoW Launcher
 - F6-F12 and the F1-F6/F1-F12 setting.
 
 [1.0.0]: https://github.com/tomsot2/WoW-DS/releases/tag/v1.0.0
+[1.1.0]: https://github.com/tomsot2/WoW-DS/releases/tag/v1.1.0

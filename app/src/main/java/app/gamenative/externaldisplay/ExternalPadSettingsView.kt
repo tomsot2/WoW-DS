@@ -71,23 +71,39 @@ class ExternalPadSettingsView(
                 toggleRow(
                     listOf(
                         "Windows" to PadSettings.SEC_WINDOWS,
-                        "1-9 0 - =" to PadSettings.SEC_NUMBERS,
+                        "Markers" to PadSettings.SEC_MARKERS,
+                        "Commands" to PadSettings.SEC_COMMANDS,
                         "Party" to PadSettings.SEC_PARTY,
                     ),
                 ),
             )
             addView(toggleRow(listOf("Swap sides (windows on the right)" to PadSettings.SWAP_SIDES)))
-            addView(cycleRow("Hotbar pages", PadSettings.HOTBAR_PAGE, listOf("Off", "Shift + number", "Ctrl + number", "Alt + number")))
+        }
+        section("Buttons and phrases") {
+            addView(
+                note(
+                    "Each button types a chat command (like /readycheck) or presses a key you've bound to an " +
+                        "in-game macro. One tap is one command or one key press.",
+                ),
+            )
+            addView(
+                rowOf(
+                    button("Markers") { showActionList(PadSettings.MARKERS) },
+                    button("Commands") { showActionList(PadSettings.COMMANDS) },
+                    button("Quick phrases") { showActionList(PadSettings.PHRASES) },
+                ),
+            )
         }
         section("Look and feel") {
             addView(sliderRow("Muted borders", PadSettings.MUTED, 0, 100) { "$it" })
-            addView(sliderRow("Number emphasis", PadSettings.EMPHASIS, 0, 200) { "$it%" })
+            addView(sliderRow("Command emphasis", PadSettings.EMPHASIS, 0, 200) { "$it%" })
             addView(sliderRow("Label size", PadSettings.LABEL_SCALE, 80, 140) { "$it%" })
             addView(cycleRow("Haptics", PadSettings.HAPTICS, listOf("Off", "Light", "Normal", "Strong")))
             addView(sliderRow("Double-tap lock", PadSettings.DOUBLE_TAP_MS, 200, 600) { "$it ms" })
             addView(cycleRow("Dim when idle", PadSettings.DIM_IDLE, listOf("Off", "After 15 s", "After 30 s", "After 1 min", "After 2 min")))
             addView(sliderRow("Dim amount", PadSettings.DIM_AMOUNT, 50, 95) { "$it%" })
             addView(note("When dimmed, the first tap only wakes the pad and doesn't press anything."))
+            addView(toggleRow(listOf("Burn-in protection (move the pad slightly every few minutes)" to PadSettings.BURN_IN_SHIFT)))
         }
         section("Trackpad") {
             addView(sliderRow("Speed", PadSettings.TP_SPEED, 1, 20) { tenths(it) })
@@ -201,6 +217,184 @@ class ExternalPadSettingsView(
                             button(keyName(key.name), active = PadSettings.remapped(label) == key.name) {
                                 PadSettings.setRemap(label, key.name)
                                 showRemap()
+                            }
+                        }.toTypedArray(),
+                        filler = 6 - chunk.size,
+                    ),
+                )
+            }
+        }
+    }
+
+    // Marker, command and phrase editing
+
+    private fun listTitle(listKey: String) = when (listKey) {
+        PadSettings.MARKERS -> "Marker buttons"
+        PadSettings.COMMANDS -> "Command buttons"
+        else -> "Quick phrases"
+    }
+
+    private fun showActionList(listKey: String) {
+        content.removeAllViews()
+        scrollTo(0, 0)
+        section(listTitle(listKey)) {
+            addView(
+                note(
+                    when (listKey) {
+                        PadSettings.MARKERS ->
+                            "Each marker types /tm with the marker's number. If your client doesn't have /tm, bind " +
+                                "the markers under Key Bindings in game and switch these buttons to those keys."
+                        PadSettings.COMMANDS -> "Tap a button to change what it does."
+                        else -> "Sent with the \"To\" channel picked on the chat bar above the keyboard."
+                    },
+                ),
+            )
+            addView(rowOf(button("Back") { showMain() }))
+        }
+        section("Buttons") {
+            PadSettings.actions(listKey).withIndex().chunked(2).forEach { chunk ->
+                addView(
+                    rowOf(
+                        *chunk.map { (i, action) ->
+                            val name = if (listKey == PadSettings.MARKERS) "${PadSettings.MARKER_STYLES[i].first} ${action.label}" else action.label
+                            button("$name\n${describe(action)}") { showActionEditor(listKey, i, action) }
+                        }.toTypedArray(),
+                        filler = 2 - chunk.size,
+                    ),
+                )
+            }
+        }
+    }
+
+    /** One line saying what an action does, e.g. "/tm 8" or "Ctrl + F1". */
+    private fun describe(action: PadAction): String = when {
+        action.isKey -> (PadAction.MODIFIER_KEYS.keys.filter { it in action.modifiers }.map { it.lowercase().replaceFirstChar(Char::uppercase) } +
+            keyName(action.key)).joinToString(" + ")
+        action.text.isBlank() -> "(empty)"
+        else -> action.text
+    }
+
+    /**
+     * Edits one button. Changes are kept in [draft] until Save. Text is typed with the pad's own keyboard
+     * at the bottom, into whichever field is selected.
+     */
+    private fun showActionEditor(listKey: String, index: Int, draft: PadAction, field: Int = 1) {
+        content.removeAllViews()
+        scrollTo(0, 0)
+        val phrase = listKey == PadSettings.PHRASES
+        var current = draft
+        // 0 = name, 1 = command. A key button only has a name to type.
+        var activeField = if (phrase) 1 else if (draft.isKey) 0 else field
+        lateinit var labelView: TextView
+        lateinit var textView: TextView
+
+        fun fieldText(value: String, active: Boolean) = if (active) "$value▏" else value.ifEmpty { " " }
+        fun refreshFields() {
+            if (!phrase) {
+                labelView.text = fieldText(current.label, activeField == 0)
+                labelView.background = theme.buttonBackground(density, 8f, active = false, emphasized = activeField == 0, muted = true)
+            }
+            textView.text = fieldText(current.text, activeField == 1)
+            textView.background = theme.buttonBackground(density, 8f, active = false, emphasized = activeField == 1, muted = true)
+        }
+        fun field(onSelect: () -> Unit) = TextView(context).apply {
+            setTextColor(theme.text)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            typeface = theme.typeface
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) }
+            setOnClickListener {
+                onSelect()
+                refreshFields()
+            }
+        }
+
+        section("${listTitle(listKey)}: button ${index + 1}") {
+            if (!phrase) {
+                addView(
+                    rowOf(
+                        button("Chat command", active = !current.isKey) { showActionEditor(listKey, index, current.copy(key = "", modifiers = emptySet()), activeField) },
+                        button("Key (for an in-game macro)", active = current.isKey) {
+                            showKeyChoice(current) { picked -> showActionEditor(listKey, index, picked, 0) }
+                        },
+                    ),
+                )
+                labelView = field { activeField = 0 }
+                addView(LinearLayout(context).apply {
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(8), 0, 0, 0)
+                    addView(label("Name", 80))
+                    addView(labelView)
+                })
+            }
+            textView = field { activeField = 1 }
+            if (current.isKey) {
+                addView(note("Sends ${describe(current)}. Bind it to a macro in WoW's Key Bindings."))
+                addView(rowOf(button("Change key") { showKeyChoice(current) { picked -> showActionEditor(listKey, index, picked, 0) } }))
+            } else {
+                addView(LinearLayout(context).apply {
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(8), 0, 0, 0)
+                    addView(label(if (phrase) "Phrase" else "Command", 80))
+                    addView(textView)
+                })
+                if (!phrase) addView(note("Start with /, like /roll or /use Hearthstone. Text without / is said with /s."))
+            }
+            addView(
+                rowOf(
+                    button("Save") {
+                        val saved = if (phrase) current.copy(label = current.text) else current
+                        PadSettings.setAction(listKey, index, saved)
+                        showActionList(listKey)
+                    },
+                    button("Cancel") { showActionList(listKey) },
+                    button("Default") { showActionEditor(listKey, index, PadSettings.defaultAction(listKey, index)) },
+                ),
+            )
+        }
+        refreshFields()
+        // The pad's own keyboard types into the selected field (nothing goes to the game). Enter switches field.
+        content.addView(
+            ExternalOnScreenKeyboardView(context, null, theme) { key ->
+                fun edit(change: (String) -> String) {
+                    current = if (activeField == 0) current.copy(label = change(current.label)) else current.copy(text = change(current.text))
+                }
+                when (key) {
+                    is ExternalOnScreenKeyboardView.LocalKey.Text -> edit { (it + key.text).take(MAX_TEXT) }
+                    ExternalOnScreenKeyboardView.LocalKey.Backspace -> edit { it.dropLast(1) }
+                    ExternalOnScreenKeyboardView.LocalKey.Enter -> if (!phrase && !current.isKey) activeField = 1 - activeField
+                }
+                refreshFields()
+            },
+        )
+    }
+
+    /** Key mode: Shift/Ctrl/Alt toggles and a key grid. Picking a key returns the updated action. */
+    private fun showKeyChoice(action: PadAction, onPicked: (PadAction) -> Unit) {
+        content.removeAllViews()
+        scrollTo(0, 0)
+        var mods = action.modifiers
+        section("Key for \"${action.label}\"") {
+            addView(note("Pick modifiers, then a key. Ctrl or Alt + an F-key is usually free for macros."))
+            addView(
+                rowOf(
+                    *PadAction.MODIFIER_KEYS.keys.map { mod ->
+                        button(mod.lowercase().replaceFirstChar(Char::uppercase), active = mod in mods) { b ->
+                            mods = if (mod in mods) mods - mod else mods + mod
+                            style(b, mod in mods)
+                        }
+                    }.toTypedArray(),
+                ),
+            )
+            addView(rowOf(button("Back") { onPicked(action) }))
+        }
+        section("Keys") {
+            PICKER_KEYS.chunked(6).forEach { chunk ->
+                addView(
+                    rowOf(
+                        *chunk.map { key ->
+                            button(keyName(key.name), active = action.key == key.name) {
+                                onPicked(action.copy(key = key.name, modifiers = mods))
                             }
                         }.toTypedArray(),
                         filler = 6 - chunk.size,
@@ -396,6 +590,9 @@ class ExternalPadSettingsView(
     }
 
     private companion object {
+        /** Longest name or command the editor accepts (WoW's chat box takes 255 characters). */
+        const val MAX_TEXT = 200
+
         val PICKER_KEYS: List<XKeycode> = buildList {
             val names = ('A'..'Z').map { "KEY_$it" } + (0..9).map { "KEY_$it" } + (1..12).map { "KEY_F$it" } +
                 listOf(
