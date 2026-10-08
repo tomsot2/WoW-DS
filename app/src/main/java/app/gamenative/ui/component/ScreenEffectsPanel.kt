@@ -1,5 +1,6 @@
 package app.gamenative.ui.component
 
+import app.gamenative.ui.theme.WowGold
 import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
@@ -439,7 +440,7 @@ fun GLScreenEffectsTabContent(
         AccentActionRow(
             title = stringResource(R.string.screen_effects_reset),
             icon = Icons.Default.RestartAlt,
-            accentColor = PluviaTheme.colors.accentPurple,
+            accentColor = WowGold,
             onClick = ::resetEffects,
         )
 
@@ -678,7 +679,7 @@ fun ScreenEffectsTabContent(
         AccentActionRow(
             title = stringResource(R.string.screen_effects_reset),
             icon = Icons.Default.RestartAlt,
-            accentColor = PluviaTheme.colors.accentPurple,
+            accentColor = WowGold,
             onClick = ::resetEffects,
         )
 
@@ -948,7 +949,7 @@ fun ScreenEffectsPanel(
                     AccentActionRow(
                         title = stringResource(R.string.screen_effects_reset),
                         icon = Icons.Default.RestartAlt,
-                        accentColor = PluviaTheme.colors.accentPurple,
+                        accentColor = WowGold,
                         onClick = ::resetEffects,
                     )
 
@@ -971,7 +972,7 @@ private fun ScreenEffectAdjustmentRow(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val accentColor = PluviaTheme.colors.accentPurple
+    val accentColor = WowGold
     val shape = RoundedCornerShape(14.dp)
     var isAdjustmentLocked by remember { mutableStateOf(false) }
 
@@ -1210,7 +1211,7 @@ private fun ScreenEffectToggleRow(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val accentColor = PluviaTheme.colors.accentPurple
+    val accentColor = WowGold
 
     Row(
         modifier = Modifier
@@ -1287,7 +1288,7 @@ private fun ScreenEffectRadioRow(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val accentColor = PluviaTheme.colors.accentPurple
+    val accentColor = WowGold
     val shape = RoundedCornerShape(14.dp)
 
     Row(
